@@ -1,13 +1,14 @@
 package com.mol.auth.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
-import com.mol.apl.dto.LoginBody;
+import com.mol.api.dto.LoginBody;
 import com.mol.auth.service.AuthService;
 import com.mol.common.core.util.R;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.HashMap;
@@ -38,7 +39,7 @@ public class AuthController {
      */
     @Operation(summary = "用户登录", description = "根据用户类型进行分表校验，成功后签发并返回 Sa-Token 令牌")
     @PostMapping("/login")
-    public R<Map<String, String>> login(@RequestBody LoginBody loginBody) {
+    public R<Map<String, String>> login(@Validated @RequestBody LoginBody loginBody) {
         log.info("收到登录请求: 用户名={}, 类型={}", loginBody.getUsername(), loginBody.getUserType());
         
         // 1. 调用 Service 执行校验逻辑并获取 Token 值

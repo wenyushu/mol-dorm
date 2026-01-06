@@ -3,6 +3,12 @@ package com.mol.sys.biz;
 import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.ConfigurableApplicationContext;
+import org.springframework.context.annotation.ComponentScan;
+import org.springframework.core.env.Environment;
+
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 
 /**
  * 系统管理模块启动类 (Sys-Biz)
@@ -12,20 +18,41 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * @author mol
  */
 @SpringBootApplication
-// 关键：扫描 mol 根包下的所有组件
-// 这样才能扫到 common 模块里的 GlobalExceptionHandler, MybatisPlusConfiguration 等
-@MapperScan("com.mol.**.mapper") // 使用通配符，确保扫描到所有模块下的 mapper 包
+@MapperScan("com.mol.sys.biz.mapper") // 精确到本模块的 mapper
+/* 重点：精确组件扫描
+   1. com.mol.sys.biz: 扫描本模块的 Controller, Service 等
+   2. com.mol.common: 扫描公共模块的配置（Swagger, Sa-Token, 全局异常处理等）
+*/
+@ComponentScan(basePackages = {"com.mol.sys.biz", "com.mol.common"})
+
 public class MolSysApplication {
     
-    public static void main(String[] args) {
-        // 设置虚拟线程优化（虽然 yml 配了，代码里也可以显式确认一下，针对 SpringBoot 3.5.x）
+    public static void main(String[] args) throws UnknownHostException {
+        
+        // 虚拟线程
         System.setProperty("spring.threads.virtual.enabled", "true");
+
+        // 1. 启动并获取上下文
+        ConfigurableApplicationContext application = SpringApplication.run(MolSysApplication.class, args);
         
-        SpringApplication.run(MolSysApplication.class, args);
+        // 2. 动态提取配置
+        Environment env = application.getEnvironment();
+        String ip = InetAddress.getLocalHost().getHostAddress();
+        String port = env.getProperty("server.port", "8080");
+        String path = env.getProperty("server.servlet.context-path", "");
         
-        System.out.println("-------------------------------------------------------");
-        System.out.println(" (♥◠‿◠)ﾉﾞ  Mol-Dorm 系统管理模块启动成功   ლ(´ڡ`ლ)ﾞ  ");
-        System.out.println(" 接口文档: http://localhost:8080/api/sys/doc.html       ");
-        System.out.println("-------------------------------------------------------");
+        String hostUrl = "http://localhost:" + port + path;
+        String externalUrl = "http://" + ip + ":" + port + path;
+
+        // 3. 打印动态横幅
+        System.out.println("""
+                -------------------------------------------------------
+                \t(♥◠‿◠)ﾉﾞ  Mol-Dorm 系统管理模块启动成功   ლ(´ڡ`ლ)ﾞ \s
+                \t本地访问地址:  %s
+                \t外部访问地址:  %s
+                \t接口文档地址:  %s/swagger-ui/index.html
+                \t数据源 JSON:   %s/v3/api-docs
+                -------------------------------------------------------
+                """.formatted(hostUrl, externalUrl, hostUrl, hostUrl));
     }
 }

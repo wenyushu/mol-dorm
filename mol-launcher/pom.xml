@@ -10,35 +10,43 @@
         <version>1.0.0</version>
     </parent>
 
-    <artifactId>mol-sys-biz</artifactId>
-    <description>系统管理业务模块</description>
+    <artifactId>mol-launcher</artifactId>
+    <description>MOL-DORM 项目聚合启动模块 - 仅用于本地开发环境一键启动</description>
 
     <dependencies>
         <dependency>
             <groupId>com.mol</groupId>
-            <artifactId>mol-common-mybatis</artifactId>
+            <artifactId>mol-auth</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.mol</groupId>
-            <artifactId>mol-common-security</artifactId>
+            <artifactId>mol-sys-biz</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>com.mol</groupId>
-            <artifactId>mol-api</artifactId>
-        </dependency>
-
-        <dependency>
-            <groupId>org.springframework.boot</groupId>
-            <artifactId>spring-boot-configuration-processor</artifactId>
-            <optional>true</optional>
+            <artifactId>mol-dorm-biz</artifactId>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>
             <groupId>org.springdoc</groupId>
             <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
         </dependency>
-
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <mainClass>com.mol.MolLauncher</mainClass>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

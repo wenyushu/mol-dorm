@@ -25,16 +25,20 @@ public class SaTokenConfigure implements WebMvcConfigurer {
             SaRouter.match("/**")
                     // 2. 放行登录、注册等认证相关接口 (匹配 mol-auth 模块)
                     .notMatch("/auth/**")
-                    
-                    // 3. 放行 Swagger / SpringDoc / Knife4j 相关的所有静态资源和接口地址
-                    // 注意：由于配置了 context-path，拦截器中的路径是相对于 context-path 之后的
+
+                    // 3. 放行 Swagger 标准资源
                     .notMatch("/swagger-ui.html")
                     .notMatch("/swagger-ui/**")
-                    .notMatch("/v3/api-docs/**")
-                    .notMatch("/doc.html")       // 预留 Knife4j 路径
-                    .notMatch("/webjars/**")
                     
-                    // 4. 除上述外，所有接口必须登录才能访问
+                    // 4. 放行 OpenAPI 的 JSON 数据接口 (这是 Apifox 同步数据的核心)
+                    // 确保它不被拦截，Apifox 才能自动刷新接口
+                    .notMatch("/v3/api-docs/**")
+                    
+                    // 5. 静态资源（由于不再使用 Knife4j，doc.html 可以删掉，但保留 webjars 没坏处）
+                    .notMatch("/webjars/**")
+                    .notMatch("/favicon.ico")
+                    
+                    // 6. 除上述外，所有接口必须登录才能访问
                     .check(r -> StpUtil.checkLogin());
             
         })).addPathPatterns("/**");
