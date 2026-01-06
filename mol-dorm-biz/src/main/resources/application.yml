@@ -1,0 +1,52 @@
+# ===================================================================
+# Mol-Dorm 宿舍业务模块 (Dormitory Business Service)
+# 负责：楼栋、房间、床位分配、水电抄表、报修申请等
+# ===================================================================
+
+server:
+  port: 8081
+  servlet:
+    context-path: /api/dorm # 接口访问前缀：http://localhost:8081/api/dorm
+
+spring:
+  application:
+    name: mol-dorm-biz
+
+  # 【核心】导入公共基础配置
+  config:
+    import:
+      - optional:classpath:/common-base.yml
+
+  # 虚拟线程优化 (处理复杂宿舍分配算法)
+  threads:
+    virtual:
+      enabled: true
+
+  # 保持与系统模块一致的 JSON 格式
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+
+# MyBatis-Plus 模块化配置
+mybatis-plus:
+  # 指定当前模块的 XML 映射文件位置
+  mapper-locations: classpath:/mapper/dorm/*.xml
+  # 实体类所在包：对应 com.mol.dorm.entity
+  type-aliases-package: com.mol.dorm.entity
+
+# SpringDoc (OpenAPI 3) 业务模块配置
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+  # 业务模块特有的接口信息
+  info:
+    title: "MOL-Dorm 宿舍管理模块文档"
+    description: "涵盖宿舍楼、房间、床位、水电费记录及报修流程"
+    version: "1.0.0"
+  # 分组扫描
+  group-configs:
+    - group: 'dorm'
+      paths-to-match: '/**'
+      packages-to-scan: com.mol.dorm.controller # 扫描业务模块控制器

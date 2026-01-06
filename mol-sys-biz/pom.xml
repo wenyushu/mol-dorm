@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+
+    <parent>
+        <groupId>com.mol</groupId>
+        <artifactId>mol-dorm</artifactId>
+        <version>1.0.0</version>
+    </parent>
+
+    <artifactId>mol-sys-biz</artifactId>
+    <description>系统管理业务模块</description>
+
+    <dependencies>
+        <dependency>
+            <groupId>com.mol</groupId>
+            <artifactId>mol-common-mybatis</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mol</groupId>
+            <artifactId>mol-common-security</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.mol</groupId>
+            <artifactId>mol-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-configuration-processor</artifactId>
+            <optional>true</optional>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+        </dependency>
+
+    </dependencies>
+</project>
