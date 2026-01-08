@@ -17,7 +17,7 @@ spring:
       idle-timeout: 30000         # 连接空闲超时时间（毫秒）
       connection-timeout: 30000   # 等待连接池分配连接的最大时长
 
-  # 2. Redis 核心配置 (带密码版)
+  # 2. Redis 核心配置
   data:
     redis:
       host: localhost             # Redis 服务器地址

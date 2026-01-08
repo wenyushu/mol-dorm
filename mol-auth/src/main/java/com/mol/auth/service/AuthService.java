@@ -87,7 +87,11 @@ public class AuthService {
            1. 解决了主键 ID 冲突问题（如果两个表恰好都有 ID 为 1 的用户）。
            2. 在后续获取权限时，可以轻松 split(":") 拿到类型，从而决定去哪张表查权限。
          */
-        String loginId = userType + ":" + userId;
+        String loginId = userType + ":" + userId; // "0:1"
+        // 解析
+        String[] parts = loginId.split(":");
+        userType = Integer.parseInt(parts[0]);
+        userId = Long.parseLong(parts[1]);
         
         // 执行 Sa-Token 登录（底层会自动处理 Cookie/Header）
         StpUtil.login(loginId);

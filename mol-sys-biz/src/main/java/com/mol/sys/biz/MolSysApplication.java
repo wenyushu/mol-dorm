@@ -10,19 +10,9 @@ import org.springframework.core.env.Environment;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-/**
- * 系统管理模块启动类 (Sys-Biz)
- * * <p>注意：在多模块架构中，必须显式配置组件扫描路径，
- * 否则 Spring 无法加载到其他模块（如 mol-common-mybatis）中的配置类。</p>
- *
- * @author mol
- */
+// 系统管理模块启动类 (Sys-Biz)
 @SpringBootApplication
 @MapperScan("com.mol.sys.biz.mapper") // 精确到本模块的 mapper
-/* 重点：精确组件扫描
-   1. com.mol.sys.biz: 扫描本模块的 Controller, Service 等
-   2. com.mol.common: 扫描公共模块的配置（Swagger, Sa-Token, 全局异常处理等）
-*/
 @ComponentScan(basePackages = {"com.mol.sys.biz", "com.mol.common"})
 
 public class MolSysApplication {

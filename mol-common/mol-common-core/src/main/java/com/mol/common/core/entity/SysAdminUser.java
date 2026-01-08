@@ -33,7 +33,7 @@ public class SysAdminUser extends BaseEntity {
     private String phone;
     
     @Schema(description = "管理员级别: 2-超级管理员, 1-部门管理, 0-普通宿管")
-    private Integer adminLevel;
+    private Integer roleType;
     
     @Schema(description = "帐号状态 (0-正常, 1-停用)")
     private String status;

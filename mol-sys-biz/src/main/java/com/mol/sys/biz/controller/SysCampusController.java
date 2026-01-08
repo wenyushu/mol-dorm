@@ -1,6 +1,6 @@
 package com.mol.sys.biz.controller;
 
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
+import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mol.common.core.util.R;
 import com.mol.sys.biz.entity.SysCampus;
@@ -14,59 +14,56 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 /**
- * 校区管理
- * <p>提供校区的增删改查功能</p>
- *
- * @author mol
+ * 校区管理控制器
+ * 提供校区的增删改查功能
  */
+@Tag(name = "校区管理", description = "管理学校的各个校区信息")
 @RestController
-@RequiredArgsConstructor
 @RequestMapping("/campus")
-@Tag(name = "校区管理接口", description = "校区基础信息的维护与查询")
+@RequiredArgsConstructor
 public class SysCampusController {
     
-    private final SysCampusService sysCampusService;
+    private final SysCampusService campusService;
     
-    /**
-     * 分页查询校区列表
-     * @param page 分页对象（Apifox 会自动识别 current 和 size 参数）
-     * @return 分页后的数据
-     */
-    @Operation(summary = "分页查询校区", description = "根据页码和条数获取校区列表")
-    @GetMapping("/page")
-    public R<Page<SysCampus>> getCampusPage(Page<SysCampus> page) {
-        // 使用前端传进来的 page 对象，这样 current (页码) 和 size (每页条数) 才会生效
-        return R.ok(sysCampusService.page(page));
-    }
-    
-    /**
-     * 获取所有校区列表
-     * <p>常用于下拉框选择</p>
-     */
-    @Operation(summary = "获取所有校区列表", description = "获取所有校区数据，不进行分页")
+    @Operation(summary = "获取所有校区", description = "查询系统中的所有校区列表（不分页）")
     @GetMapping("/list")
-    public R<List<SysCampus>> getList() {
-        return R.ok(sysCampusService.list(Wrappers.emptyWrapper()));
+    public R<List<SysCampus>> list() {
+        return R.ok(campusService.list());
     }
     
-    /**
-     * 新增校区
-     * @param sysCampus 校区信息对象
-     */
+    @Operation(summary = "分页查询校区")
+    @GetMapping("/page")
+    public R<IPage<SysCampus>> page(
+            @Parameter(description = "页码", example = "1")
+            @RequestParam(name = "pageNum", defaultValue = "1") Integer pageNum, // 显式添加 name = "pageNum"
+            
+            @Parameter(description = "每页大小", example = "10")
+            @RequestParam(name = "pageSize", defaultValue = "10") Integer pageSize) { // 显式添加 name = "pageSize"
+        
+        return R.ok(campusService.page(new Page<>(pageNum, pageSize)));
+    }
+    
+    @Operation(summary = "根据 ID 获取详情")
+    @GetMapping("/{id}")
+    public R<SysCampus> getInfo(@PathVariable Long id) {
+        return R.ok(campusService.getById(id));
+    }
+    
     @Operation(summary = "新增校区")
     @PostMapping
-    public R<Boolean> save(@RequestBody SysCampus sysCampus) {
-        return R.ok(sysCampusService.save(sysCampus));
+    public R<Boolean> save(@RequestBody SysCampus campus) {
+        return R.ok(campusService.save(campus));
     }
     
-    /**
-     * 根据 ID 删除校区
-     * @param id 校区主键 ID
-     */
+    @Operation(summary = "修改校区")
+    @PutMapping
+    public R<Boolean> update(@RequestBody SysCampus campus) {
+        return R.ok(campusService.updateById(campus));
+    }
+    
     @Operation(summary = "删除校区")
-    @Parameter(name = "id", description = "校区 ID", required = true)
     @DeleteMapping("/{id}")
-    public R<Boolean> removeById(@PathVariable Long id) {
-        return R.ok(sysCampusService.removeById(id));
+    public R<Boolean> remove(@PathVariable Long id) {
+        return R.ok(campusService.removeById(id));
     }
 }

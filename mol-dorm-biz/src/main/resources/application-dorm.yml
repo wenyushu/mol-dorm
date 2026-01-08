@@ -43,10 +43,10 @@ springdoc:
   # 业务模块特有的接口信息
   info:
     title: "MOL-Dorm 宿舍管理模块文档"
-    description: "涵盖宿舍楼、房间、床位、水电费记录及报修流程"
+    description: "涵盖宿舍楼、房间、床位、水电费记录及报修流程等业务处理"
     version: "1.0.0"
   # 分组扫描
   group-configs:
-    - group: 'dorm'
+    - group: 'dorm' # 这里定义了分组名
       paths-to-match: '/**'
       packages-to-scan: com.mol.dorm.controller # 扫描业务模块控制器

@@ -11,4 +11,5 @@ import com.mol.sys.biz.entity.SysCampus;
  */
 public interface SysCampusService extends IService<SysCampus> {
     // 这里可以定义复杂的业务逻辑方法，例如：根据编码查询校区
+    // 目前用 MyBatis-Plus 自带的 CRUD 就够了
 }
