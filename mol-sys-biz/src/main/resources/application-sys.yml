@@ -54,4 +54,4 @@ springdoc:
   group-configs:
     - group: 'sys'                 # Apifox 导入时可以选择此分组
       paths-to-match: '/**'
-      packages-to-scan: com.mol.sys.biz #.controller # 扫描 com.mol 前缀的控制器
+      packages-to-scan: com.mol.sys.biz.controller #.controller # 扫描 com.mol 前缀的控制器

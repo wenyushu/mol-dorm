@@ -43,9 +43,6 @@ mybatis-plus:
   global-config:
     db-config:
       id-type: assign_id          # 主键策略：自动分配雪花算法 ID (适合分布式)
-      # logic-delete-field: delFlag # 全局逻辑删除字段名 (对应 BaseEntity 中的 delFlag)
-      # logic-delete-value: 1       # 逻辑值：已删除为 1
-      # logic-not-delete-value: 0    # 逻辑值：正常存活为 0
       # 移除了 logic-delete 相关配置，现在调用 removeById 就是真实的 DELETE 语句
   configuration:
     map-underscore-to-camel-case: true # 自动开启驼峰命名转换 (数据库 a_column -> 实体类 aColumn)
