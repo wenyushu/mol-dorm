@@ -21,7 +21,7 @@ public class MolSysApplication {
         
         // 虚拟线程
         System.setProperty("spring.threads.virtual.enabled", "true");
-
+        
         // 1. 启动并获取上下文
         ConfigurableApplicationContext application = SpringApplication.run(MolSysApplication.class, args);
         
@@ -33,7 +33,7 @@ public class MolSysApplication {
         
         String hostUrl = "http://localhost:" + port + path;
         String externalUrl = "http://" + ip + ":" + port + path;
-
+        
         // 3. 打印动态横幅
         System.out.println("""
                 -------------------------------------------------------

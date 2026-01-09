@@ -1,5 +1,6 @@
 package com.mol.common.core.exception;
 
+import cn.dev33.satoken.exception.NotLoginException;
 import com.mol.common.core.util.R;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -61,5 +62,17 @@ public class GlobalExceptionHandler {
         // 打印完整的堆栈信息，方便后台排查问题
         log.error("系统运行出现未捕获异常 ex={}", e.getMessage(), e);
         return R.failed("系统内部错误，请联系管理员");
+    }
+    
+    
+    /**
+     * 拦截未登录异常
+     * 返回 401 状态码，告知前端跳转登录页
+     */
+    @ExceptionHandler(NotLoginException.class)
+    public R<Void> handleNotLoginException(NotLoginException e) {
+        // 打印简短日志即可，无需打印堆栈
+        log.warn("用户未登录或 Token 失效: {}", e.getMessage());
+        return R.fail(401, "Token 已失效，请重新登录");
     }
 }

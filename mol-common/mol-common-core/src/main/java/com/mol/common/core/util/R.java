@@ -27,7 +27,7 @@ public class R<T> implements Serializable {
     
     @Getter
     @Setter
-    @Schema(description = "业务响应码（0-成功，1-失败）")
+    @Schema(description = "业务响应码（0-成功，其他-失败）")
     private int code;
     
     @Getter
@@ -40,37 +40,88 @@ public class R<T> implements Serializable {
     @Schema(description = "业务数据体")
     private T data;
     
+    /* ========================== 成功状态 (OK) ========================== */
+    
     /**
-     * 静态快捷方法：成功返回 (不带数据)
+     * 成功返回 (无数据)
      */
     public static <T> R<T> ok() {
         return restResult(null, CommonConstants.SUCCESS, "操作成功");
     }
     
     /**
-     * 静态快捷方法：成功返回 (带数据)
+     * 成功返回 (带数据)
      */
     public static <T> R<T> ok(T data) {
         return restResult(data, CommonConstants.SUCCESS, "操作成功");
     }
     
     /**
-     * 静态快捷方法：失败返回 (不带数据)
+     * 成功返回 (带数据 + 自定义消息)
      */
-    public static <T> R<T> failed() {
+    public static <T> R<T> ok(T data, String msg) {
+        return restResult(data, CommonConstants.SUCCESS, msg);
+    }
+    
+    /* ========================== 失败状态 (Fail) ========================== */
+    
+    /**
+     * 失败返回 (默认消息)
+     * 对应 CommonConstants.FAIL (通常为 1)
+     */
+    public static <T> R<T> fail() {
         return restResult(null, CommonConstants.FAIL, "操作失败");
     }
     
     /**
-     * 静态快捷方法：失败返回 (自定义错误消息)
+     * 失败返回 (自定义错误消息)
+     * 状态码默认为 CommonConstants.FAIL
      */
-    public static <T> R<T> failed(String msg) {
+    public static <T> R<T> fail(String msg) {
         return restResult(null, CommonConstants.FAIL, msg);
     }
     
     /**
-     * 构造返回结果的核心方法
-     * * @param data 业务数据
+     * 失败返回 (自定义数据 + 默认错误码)
+     */
+    public static <T> R<T> fail(T data) {
+        return restResult(data, CommonConstants.FAIL, "操作失败");
+    }
+    
+    /**
+     * 失败返回 (自定义数据 + 自定义消息)
+     */
+    public static <T> R<T> fail(T data, String msg) {
+        return restResult(data, CommonConstants.FAIL, msg);
+    }
+    
+    /**
+     * 失败返回 (自定义状态码 + 自定义消息)
+     * 【核心修复】：GlobalExceptionHandler 需要用到这个方法来返回 401/403 等特定状态码
+     */
+    public static <T> R<T> fail(int code, String msg) {
+        return restResult(null, code, msg);
+    }
+    
+    /* ========================== 兼容旧方法 (可选) ========================== */
+    
+    /**
+     * 兼容旧代码 failed() 调用，指向 fail()
+     */
+    public static <T> R<T> failed() {
+        return fail();
+    }
+    
+    public static <T> R<T> failed(String msg) {
+        return fail(msg);
+    }
+    
+    /* ========================== 核心构建方法 ========================== */
+    
+    /**
+     * 构造返回结果的内部核心方法
+     *
+     * @param data 业务数据
      * @param code 响应码
      * @param msg  提示消息
      */

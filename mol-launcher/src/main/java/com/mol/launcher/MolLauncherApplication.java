@@ -1,4 +1,4 @@
-package com.mollauncher;
+package com.mol.launcher;
 
 import com.mol.auth.MolAuthApplication;
 import com.mol.dorm.biz.MolDormApplication;

@@ -24,7 +24,7 @@ import java.util.Map;
 @Slf4j
 @Tag(name = "认证中心", description = "负责用户登录、注销及权限核验")
 @RestController
-@RequestMapping("/auth")
+@RequestMapping("/") // 为了防止 URL 变成 /api/auth/auth/login
 @RequiredArgsConstructor
 public class AuthController {
     

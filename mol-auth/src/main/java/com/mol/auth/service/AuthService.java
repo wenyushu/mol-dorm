@@ -89,16 +89,13 @@ public class AuthService {
          */
         String loginId = userType + ":" + userId; // "0:1"
         // 解析
-        String[] parts = loginId.split(":");
-        userType = Integer.parseInt(parts[0]);
-        userId = Long.parseLong(parts[1]);
         
-        // 执行 Sa-Token 登录（底层会自动处理 Cookie/Header）
+        // 4. 执行 Sa-Token 登录（底层会自动处理 Cookie/Header）
         StpUtil.login(loginId);
         
         log.info("用户登录成功: username={}, loginId={}", username, loginId);
         
-        // 4. 获取并返回 Token 值
+        // 5. 获取并返回 Token 值
         return StpUtil.getTokenValue();
     }
 }
