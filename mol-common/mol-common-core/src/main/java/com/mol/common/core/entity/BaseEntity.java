@@ -3,60 +3,61 @@ package com.mol.common.core.entity;
 import com.baomidou.mybatisplus.annotation.FieldFill;
 import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableLogic;
-import io.swagger.v3.oas.annotations.media.Schema;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.Data;
 
 import java.io.Serial;
 import java.io.Serializable;
 import java.time.LocalDateTime;
 
 /**
- * 基础实体类 (BaseEntity)
- * 封装审计字段。
+ * 实体基类
+ * <p>所有业务表都应该继承此类，从而自动拥有审计字段</p>
  */
-@Getter
-@Setter
+@Data
 public class BaseEntity implements Serializable {
     
     @Serial
     private static final long serialVersionUID = 1L;
     
     /**
-     * 创建人
-     * accessMode = READ_ONLY: 告诉 Apifox/Swagger，此字段前端不可改，仅由后端返回
+     * 创建者
+     * 对应 Handler 里的 "createBy"
      */
-    @TableField(fill = FieldFill.INSERT)
-    @Schema(description = "创建人", accessMode = Schema.AccessMode.READ_ONLY)
+    @TableField(fill = FieldFill.INSERT) // 关键：告诉 MP 在插入时调用 Handler
     private String createBy;
     
     /**
      * 创建时间
+     * 对应 Handler 里的 "createTime"
      */
     @TableField(fill = FieldFill.INSERT)
-    @Schema(description = "创建时间", accessMode = Schema.AccessMode.READ_ONLY)
     private LocalDateTime createTime;
     
     /**
-     * 修改人
+     * 更新者
+     * 对应 Handler 里的 "updateBy"
      */
-    @TableField(fill = FieldFill.INSERT_UPDATE)
-    @Schema(description = "修改人", accessMode = Schema.AccessMode.READ_ONLY)
+    @TableField(fill = FieldFill.INSERT_UPDATE) // 关键：插入和更新时都调用
     private String updateBy;
     
     /**
-     * 修改时间
+     * 更新时间
+     * 对应 Handler 里的 "updateTime"
      */
     @TableField(fill = FieldFill.INSERT_UPDATE)
-    @Schema(description = "修改时间", accessMode = Schema.AccessMode.READ_ONLY)
     private LocalDateTime updateTime;
     
     /**
-     * 逻辑删除标记 (0-正常, 1-已删除)
-     * hidden = true: 在 Apifox 的接口文档界面中隐藏此字段，因为前端不需要关心逻辑删除位
+     * 逻辑删除标志
+     * 对应 Handler 里的 "delFlag"
      */
-    @TableLogic
-    @TableField(fill = FieldFill.INSERT)
-    @Schema(description = "逻辑删除标记", hidden = true)
+    @TableLogic(value = "0", delval = "2") // 逻辑删除核心注解
+    @TableField(fill = FieldFill.INSERT)   // 插入时自动填充为 "0"
     private String delFlag;
+    
+    /**
+     * 备注
+     * (这个字段一般不需要自动填充，由前端传过来，所以不用加 fill)
+     */
+    private String remark;
 }

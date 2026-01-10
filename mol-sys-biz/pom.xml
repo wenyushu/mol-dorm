@@ -16,6 +16,11 @@
     <dependencies>
         <dependency>
             <groupId>com.mol</groupId>
+            <artifactId>mol-common-core</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mol</groupId>
             <artifactId>mol-common-mybatis</artifactId>
         </dependency>
 
@@ -41,4 +46,16 @@
         </dependency>
 
     </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-maven-plugin</artifactId>
+                <configuration>
+                    <skip>true</skip>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 </project>

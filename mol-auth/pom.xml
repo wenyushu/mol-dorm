@@ -18,10 +18,17 @@
             <groupId>com.mol</groupId>
             <artifactId>mol-common-security</artifactId>
         </dependency>
+
         <dependency>
             <groupId>com.mol</groupId>
             <artifactId>mol-sys-biz</artifactId>
-            <version>${project.version}</version>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mol</groupId>
+            <artifactId>mol-dorm-biz</artifactId>
+            <version>1.0.0</version>
         </dependency>
 
     </dependencies>

@@ -2,8 +2,8 @@ package com.mol.auth.controller;
 
 import cn.dev33.satoken.stp.StpUtil;
 import com.mol.api.dto.LoginBody;
-import com.mol.auth.service.AuthService;
 import com.mol.common.core.util.R;
+import com.mol.sys.biz.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -42,8 +42,12 @@ public class AuthController {
     public R<Map<String, String>> login(@Validated @RequestBody LoginBody loginBody) {
         log.info("收到登录请求: 用户名={}, 类型={}", loginBody.getUsername(), loginBody.getUserType());
         
-        // 1. 调用 Service 执行校验逻辑并获取 Token 值
-        String tokenValue = authService.login(loginBody);
+        // 1. 调用 Service 执行校验逻辑并获取 Token 值，需要拆解 LoginBody，传入 3 个参数
+        String tokenValue = authService.login(
+                loginBody.getUsername(),
+                loginBody.getPassword(),
+                loginBody.getUserType()
+        );
         
         // 2. 封装 Token 信息
         Map<String, String> tokenInfo = new HashMap<>();
@@ -64,9 +68,12 @@ public class AuthController {
     @Operation(summary = "注销登录", description = "强制使当前的 Token 失效并退出会话")
     @PostMapping("/logout")
     public R<Void> logout() {
-        String loginId = (String) StpUtil.getLoginIdDefaultNull();
-        StpUtil.logout();
-        log.info("用户 {} 已安全退出", loginId);
+        // 防止未登录调用报错，加个判断
+        if (StpUtil.isLogin()) {
+            String loginId = (String) StpUtil.getLoginId();
+            StpUtil.logout();
+            log.info("用户 {} 已安全退出", loginId);
+        }
         return R.ok();
     }
     

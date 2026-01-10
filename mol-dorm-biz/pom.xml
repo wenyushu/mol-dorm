@@ -26,6 +26,12 @@
 
         <dependency>
             <groupId>com.mol</groupId>
+            <artifactId>mol-sys-biz</artifactId>
+            <version>1.0.0</version>
+        </dependency>
+
+        <dependency>
+            <groupId>com.mol</groupId>
             <artifactId>mol-api</artifactId>
         </dependency>
 
@@ -44,6 +50,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
             <optional>true</optional>
+        </dependency>
+        <dependency>
+            <groupId>org.projectlombok</groupId>
+            <artifactId>lombok</artifactId>
+            <scope>provided</scope>
         </dependency>
     </dependencies>
 </project>
