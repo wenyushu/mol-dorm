@@ -1,4 +1,4 @@
-package com.mol.dorm.biz.config;
+package com.mol.sys.biz.config;
 
 import cn.dev33.satoken.stp.StpInterface;
 import com.mol.common.core.constant.RoleConstants;

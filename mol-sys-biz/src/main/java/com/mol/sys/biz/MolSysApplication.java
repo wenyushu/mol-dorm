@@ -12,8 +12,9 @@ import java.net.UnknownHostException;
 
 // 系统管理模块启动类 (Sys-Biz)
 @SpringBootApplication
-@MapperScan("com.mol.sys.biz.mapper") // 精确到本模块的 mapper
-@ComponentScan(basePackages = {"com.mol.sys.biz", "com.mol.common"})
+@ComponentScan("com.mol")
+// 核心修复 2：扫描所有模块的 Mapper (关键！这能扫到 com.mol.sys... 下的 Mapper)
+@MapperScan("com.mol.**.mapper")
 
 public class MolSysApplication {
     

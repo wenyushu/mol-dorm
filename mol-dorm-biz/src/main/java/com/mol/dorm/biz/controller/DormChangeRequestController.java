@@ -1,122 +1,77 @@
 package com.mol.dorm.biz.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
+import cn.dev33.satoken.annotation.SaCheckRole;
+import cn.dev33.satoken.annotation.SaMode;
+import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import com.mol.common.core.constant.RoleConstants;
 import com.mol.common.core.util.R;
 import com.mol.dorm.biz.entity.DormChangeRequest;
 import com.mol.dorm.biz.service.DormChangeRequestService;
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
-import lombok.Data;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/**
- * 宿舍调换申请控制器
- * <p>
- * 提供申请提交、辅导员审批、宿管审批、列表查询等接口
- * </p>
- *
- * @author mol
- */
+@Tag(name = "调宿申请管理")
 @RestController
-@RequestMapping("/dorm/change")
+@RequestMapping("/change-request")
 @RequiredArgsConstructor
 public class DormChangeRequestController {
     
-    private final DormChangeRequestService changeService;
+    private final DormChangeRequestService requestService;
     
-    /**
-     * 1. 提交调宿申请 (学生端)
-     */
+    @Operation(summary = "提交调宿申请", description = "学生可提交，需登录")
+    @SaCheckLogin
     @PostMapping("/submit")
-    public R<Void> submitRequest(@RequestBody @Valid SubmitDTO dto) {
-        // 获取当前登录用户ID
-        // 实际开发中建议用: StpUtil.getLoginIdAsLong() 或 UserContext.getUserId()
-        // 这里暂时假设前端传过来或者从 Header 获取，这里模拟一个从上下文获取
-        Long currentUserId = getCurrentUserId();
-        
-        changeService.submitRequest(currentUserId, dto.getTargetRoomId(), dto.getReason());
-        
+    // ✅ 修复点 1：返回类型改为 R<Void> 比较合适，因为 Service 返回 void
+    public R<Void> submit(@RequestBody DormChangeRequest request) {
+        // ✅ 修复点 2：拆解参数调用 Service
+        // 使用 StpUtil.getLoginIdAsLong() 获取当前登录用户ID，比传参更安全
+        requestService.submitRequest(
+                StpUtil.getLoginIdAsLong(),
+                request.getTargetRoomId(),
+                request.getReason()
+        );
         return R.ok();
     }
     
-    /**
-     * 2. 辅导员审批 (辅导员端)
-     * 对应状态流转: 0 -> 1 (通过) 或 3 (驳回)
-     */
-    @PostMapping("/audit/counselor")
-    public R<Void> auditByCounselor(@RequestBody @Valid AuditDTO dto) {
-        changeService.auditByCounselor(dto.getId(), dto.getPass(), dto.getMsg());
-        return R.ok();
-    }
-    
-    /**
-     * 3. 宿管经理审批 (宿管端)
-     * 对应状态流转: 1 -> 2 (通过并换房) 或 3 (驳回)
-     */
-    @PostMapping("/audit/manager")
-    public R<Void> auditByManager(@RequestBody @Valid AuditDTO dto) {
-        changeService.auditByManager(dto.getId(), dto.getPass(), dto.getMsg());
-        return R.ok();
-    }
-    
-    /**
-     * 4. 获取我的申请记录 (学生端)
-     */
-    @GetMapping("/my")
-    public R<Page<DormChangeRequest>> getMyRequests(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize) {
-        
-        Long currentUserId = getCurrentUserId();
-        Page<DormChangeRequest> page = new Page<>(pageNum, pageSize);
-        
-        // 查询当前用户的记录
-        return R.ok(changeService.getRequestList(page, currentUserId, null));
-    }
-    
-    /**
-     * 5. 获取所有申请列表 (管理端)
-     * 可以按状态筛选 (例如辅导员只看 status=0 的，宿管只看 status=1 的)
-     */
+    @Operation(summary = "查询列表", description = "所有人可查")
+    @SaCheckLogin
     @GetMapping("/list")
-    public R<Page<DormChangeRequest>> getAllRequests(
-            @RequestParam(defaultValue = "1") Integer pageNum,
-            @RequestParam(defaultValue = "10") Integer pageSize,
-            @RequestParam(required = false) Integer status) {
+    public R<Page<DormChangeRequest>> list(
+            @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
+            @Parameter(description = "大小") @RequestParam(defaultValue = "10") Integer pageSize,
+            @Parameter(description = "状态") @RequestParam(required = false) Integer status) {
         
         Page<DormChangeRequest> page = new Page<>(pageNum, pageSize);
+        // 如果不是管理员，只能查自己的
+        Long userId = null;
+        if (!StpUtil.hasRole(RoleConstants.SUPER_ADMIN) &&
+                !StpUtil.hasRole(RoleConstants.DORM_MANAGER) &&
+                !StpUtil.hasRole(RoleConstants.COUNSELOR)) {
+            userId = StpUtil.getLoginIdAsLong();
+        }
         
-        // userId 传 null 表示查询所有人
-        return R.ok(changeService.getRequestList(page, null, status));
+        return R.ok(requestService.getRequestList(page, userId, status));
     }
     
-    // --- 模拟获取当前用户的方法 ---
-    private Long getCurrentUserId() {
-        // TODO: 请替换为你项目中真实的获取登录用户逻辑
-        // 例如: return StpUtil.getLoginIdAsLong();
-        // 临时硬编码方便调试:
-        return 60001L;
-    }
-    
-    // ================== 内部 DTO 类 ==================
-    
-    @Data
-    public static class SubmitDTO {
-        @NotNull(message = "目标宿舍 ID 不能为空")
-        private Long targetRoomId;
+    @Operation(summary = "审批申请 (同意/拒绝)", description = "仅限管理人员")
+    @SaCheckRole(value = {
+            RoleConstants.SUPER_ADMIN,
+            RoleConstants.DORM_MANAGER,
+            RoleConstants.COUNSELOR
+    }, mode = SaMode.OR)
+    @PostMapping("/approve")
+    public R<Void> approve(
+            @RequestParam Long requestId,
+            @RequestParam Boolean agree,
+            @RequestParam(required = false) String remark) {
         
-        private String reason;
-    }
-    
-    @Data
-    public static class AuditDTO {
-        @NotNull(message = "申请单 ID 不能为空")
-        private Long id;
-        
-        @NotNull(message = "审核结果不能为空")
-        private Boolean pass; // true: 通过, false: 驳回
-        
-        private String msg;   // 审核意见
+        // ✅ 修复点 3：调用新写的 approveRequest 方法
+        requestService.approveRequest(requestId, agree, remark);
+        return R.ok();
     }
 }

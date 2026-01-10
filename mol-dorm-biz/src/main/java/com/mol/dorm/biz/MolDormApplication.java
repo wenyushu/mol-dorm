@@ -18,19 +18,9 @@ import java.net.UnknownHostException;
  * 3. 访问前缀：/api/dorm。
  */
 @SpringBootApplication
-/*
- * 重点 1：精确 Mapper 扫描
- * 必须只扫描 com.mol.dorm.biz.mapper，防止在聚合启动时
- * 扫到其他模块的 Mapper 导致 SQL 映射冲突或 Bean 重复定义。
- */
-@MapperScan("com.mol.dorm.biz.mapper")
-/*
- * 重点 2：精确组件扫描 (隔离关键)
- * 1. "com.mol.dorm.biz": 扫描本模块的 Controller, Service, Component。
- * 2. "com.mol.common": 扫描公共模块的配置（如 OpenApiConfig, SaTokenConfigure, GlobalExceptionHandler）。
- * 这样既能保证业务独立，又能共用基础安全和文档配置。
- */
-@ComponentScan(basePackages = {"com.mol.dorm.biz", "com.mol.common"})
+@ComponentScan("com.mol")
+// 核心修复 2：扫描所有模块的 Mapper (关键！这能扫到 com.mol.sys... 下的 Mapper)
+@MapperScan("com.mol.**.mapper")
 public class MolDormApplication {
     
     public static void main(String[] args)throws UnknownHostException {

@@ -1,8 +1,18 @@
 # ===================================================================
 # MOL-DORM 聚合启动模块全局配置
 # ===================================================================
+server:
+  port: 9090 # 聚合启动时，通常占用一个端口
 
 spring:
+  application:
+    name: mol-launcher
+
+  # 核心修复：显式导入公共数据库配置
+  config:
+    import:
+      - optional:classpath:/common-base.yml
+
   main:
     # 允许 Bean 定义覆盖 (多模块聚合启动时，防止重名的 Bean 导致冲突)
     allow-bean-definition-overriding: true

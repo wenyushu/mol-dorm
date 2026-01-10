@@ -20,14 +20,14 @@ import java.net.UnknownHostException;
  */
 @Slf4j
 @SpringBootApplication
-// Mapper 扫描
-@MapperScan("com.mol.auth.mapper")
-// 全模块组件扫描 (核心配置)
-@ComponentScan(basePackages = {"com.mol.auth", "com.mol.common"})
+// 扫描所有模块的 Mapper (包括 sys 模块的 Mapper)
+@MapperScan("com.mol.**.mapper")
+// 扫描所有模块的 Bean (包括 sys 模块的 Service)
+@ComponentScan(basePackages = {"com.mol"})
 public class MolAuthApplication {
     
     public static void main(String[] args) throws UnknownHostException {
-        // 1. 开启 Spring Boot 3.5+ 虚拟线程优化
+        // 1. 开启 Spring Boot 虚拟线程优化 (Java 21+)
         System.setProperty("spring.threads.virtual.enabled", "true");
         
         // 2. 启动应用

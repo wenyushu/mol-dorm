@@ -3,16 +3,28 @@ package com.mol.launcher;
 import com.mol.auth.MolAuthApplication;
 import com.mol.dorm.biz.MolDormApplication;
 import com.mol.sys.biz.MolSysApplication;
+import org.mybatis.spring.annotation.MapperScan;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.builder.SpringApplicationBuilder;
+import org.springframework.context.annotation.ComponentScan;
 
 /**
  * MOL-DORM 聚合启动类
  * 模仿 Pig 项目风格，实现本地开发环境一键启动所有子模块
  * 注意：不要在这里加 @SpringBootApplication 注解！
  */
+@SpringBootApplication
+// 1. 扫描所有模块的 Bean (Service, Component, Controller)
+@ComponentScan("com.mol")
+// 2. 扫描所有模块的 Mapper 接口
+@MapperScan("com.mol.**.mapper")
 public class MolLauncherApplication {
     
     public static void main(String[] args) {
+        
+        SpringApplication.run(MolLauncherApplication.class, args);
+        System.out.println("#######################################");
         
         // 1. 设置全局系统属性，防止 JMX 冲突
         // 设置全局系统属性
