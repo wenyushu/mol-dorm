@@ -1,6 +1,5 @@
 package com.mol.common.core.entity;
 
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -9,12 +8,17 @@ import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 用户角色中间表
- * 对应数据库表：sys_user_role
+ * 用户和角色关联表
+ * <p>
+ * 对应数据库: sys_user_role
+ * 这是一个纯关联表，通常不需要继承 BaseEntity (除非你有给关联表加审计字段的需求)
+ * </p>
+ *
+ * @author mol
  */
 @Data
 @TableName("sys_user_role")
-@Schema(description = "用户角色关联")
+@Schema(description = "用户角色关联对象")
 public class SysUserRole implements Serializable {
     
     @Serial
@@ -25,11 +29,4 @@ public class SysUserRole implements Serializable {
     
     @Schema(description = "角色 ID")
     private Long roleId;
-    
-    /**
-     * 用户类型: 0-管理员, 1-普通用户
-     * 这是你数据库里设计的关键字段，用来区分 admin 表和 ordinary 表的 ID
-     */
-    @Schema(description = "用户类型: 0-管理员, 1-普通用户")
-    private Integer userType;
 }

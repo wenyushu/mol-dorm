@@ -1,5 +1,6 @@
 package com.mol.dorm.biz.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -22,7 +23,7 @@ public class DormBuildingController {
     private final DormBuildingService buildingService;
     
     // ==================== 1. 公共查询 (所有人可查) ====================
-    
+    @SaCheckLogin // 🔒 需要登录
     @Operation(summary = "分页查询楼栋列表")
     @GetMapping("/list")
     public R<Page<DormBuilding>> list(Page<DormBuilding> page, DormBuilding building) {
@@ -30,11 +31,13 @@ public class DormBuildingController {
         return R.ok(buildingService.page(page));
     }
     
+    @SaCheckLogin // 🔒 需要登录
     @Operation(summary = "获取楼栋详情")
     @GetMapping("/{id}")
     public R<DormBuilding> getInfo(@PathVariable Long id) {
         return R.ok(buildingService.getById(id));
     }
+    
     
     // ==================== 2. 高危操作 (仅 Super Admin) ====================
     
@@ -46,12 +49,14 @@ public class DormBuildingController {
         return R.ok(null, "楼栋初始化成功");
     }
     
+    
     @Operation(summary = "新增楼栋 (手动)", description = "仅限超管")
     @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 只有超管能建楼
     @PostMapping
     public R<Boolean> save(@RequestBody DormBuilding building) {
         return R.ok(buildingService.saveBuilding(building));
     }
+    
     
     @Operation(summary = "删除楼栋", description = "级联删除，仅限超管")
     @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 只有超管能拆楼

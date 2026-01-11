@@ -96,39 +96,17 @@ CREATE TABLE `biz_meter_reading` (
 DROP TABLE IF EXISTS `biz_repair_order`;
 
 CREATE TABLE `biz_repair_order` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `order_no` varchar(32) NOT NULL,
-  `room_id` bigint NOT NULL,
-  `asset_id` bigint DEFAULT NULL COMMENT '关联dorm_fixed_asset',
-  `applicant_id` bigint NOT NULL,
-  `handler_id` bigint DEFAULT NULL COMMENT '维修工ID',
-  `description` text NOT NULL,
-  `damage_level` tinyint DEFAULT '1' COMMENT '1-轻微, 2-严重, 3-需报废',
-  `status` tinyint DEFAULT '0' COMMENT '0-待派, 1-维修中, 2-完成',
-  `result_remark` varchar(255) DEFAULT NULL,
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `order_no` varchar(32) NOT NULL COMMENT '工单号(R2024...)',
+  `room_id` bigint NOT NULL COMMENT '房间ID',
+  `applicant_id` bigint NOT NULL COMMENT '申请人ID',
+  `description` text NOT NULL COMMENT '故障描述',
+  `status` int DEFAULT '0' COMMENT '0-待处理, 1-维修中, 2-已完成',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `create_by` varchar(64) DEFAULT 'admin',
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `del_flag` char(1) DEFAULT '0',
-  `remark` varchar(500) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_order` (`order_no`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='报修工单';
 
 /*Data for the table `biz_repair_order` */
-
-insert  into `biz_repair_order`(`id`,`order_no`,`room_id`,`asset_id`,`applicant_id`,`handler_id`,`description`,`damage_level`,`status`,`result_remark`,`create_time`,`create_by`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(81001,'R202601010001',40001,NULL,60001,NULL,'空调不制冷',1,0,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81002,'R202601010002',40005,NULL,60003,NULL,'门锁坏了',1,1,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81003,'R202601010003',40002,NULL,60008,NULL,'灯管闪烁',1,2,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81004,'R202601010004',40001,NULL,60002,NULL,'水龙头漏水',1,0,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81005,'R202601010005',40006,NULL,60004,NULL,'下水道堵塞',1,0,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81006,'R202601010006',40003,NULL,60005,NULL,'椅子腿断了',1,2,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81007,'R202601010007',40004,NULL,60006,NULL,'网口不通',1,0,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81008,'R202601010008',40001,NULL,60001,NULL,'阳台玻璃裂缝',1,0,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81009,'R202601010009',40002,NULL,60009,NULL,'天花板渗水',1,1,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL),
-(81010,'R202601010010',40005,NULL,60007,NULL,'衣柜合页坏了',1,0,NULL,'2026-01-08 10:32:49','admin',NULL,NULL,'0',NULL);
 
 /*Table structure for table `biz_room_change` */
 
@@ -221,95 +199,51 @@ CREATE TABLE `biz_user_preference` (
 DROP TABLE IF EXISTS `biz_utility_bill`;
 
 CREATE TABLE `biz_utility_bill` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `room_id` bigint NOT NULL,
-  `month` varchar(7) NOT NULL COMMENT '2025-06',
-  `water_usage` decimal(10,2) DEFAULT '0.00',
-  `electric_usage` decimal(10,2) DEFAULT '0.00',
-  `total_cost` decimal(10,2) NOT NULL,
-  `status` tinyint DEFAULT '0' COMMENT '0-未缴, 1-已缴',
-  `create_by` varchar(64) DEFAULT 'admin',
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `room_id` bigint NOT NULL COMMENT '房间ID',
+  `month` varchar(7) NOT NULL COMMENT '月份(2024-06)',
+  `water_usage` decimal(10,2) DEFAULT '0.00' COMMENT '用水量',
+  `electric_usage` decimal(10,2) DEFAULT '0.00' COMMENT '用电量',
+  `total_cost` decimal(10,2) NOT NULL COMMENT '总费用',
+  `status` int DEFAULT '0' COMMENT '0-未缴, 1-已缴',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `del_flag` char(1) DEFAULT '0',
-  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='水电费账单';
 
 /*Data for the table `biz_utility_bill` */
-
-insert  into `biz_utility_bill`(`id`,`room_id`,`month`,`water_usage`,`electric_usage`,`total_cost`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(83001,40001,'2025-12',0.00,0.00,150.00,1,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83002,40002,'2025-12',0.00,0.00,120.00,0,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83003,40003,'2025-12',0.00,0.00,90.00,1,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83004,40005,'2025-12',0.00,0.00,200.00,0,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83005,40001,'2026-01',0.00,0.00,50.00,0,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83006,40002,'2026-01',0.00,0.00,60.00,0,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83007,40003,'2026-01',0.00,0.00,70.00,0,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83008,40005,'2026-01',0.00,0.00,80.00,0,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83009,40006,'2026-01',0.00,0.00,40.00,1,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL),
-(83010,40007,'2026-01',0.00,0.00,110.00,1,'admin','2026-01-09 15:41:18',NULL,NULL,'0',NULL);
-
-/*Table structure for table `biz_vacation_stay` */
-
-DROP TABLE IF EXISTS `biz_vacation_stay`;
-
-CREATE TABLE `biz_vacation_stay` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `student_id` bigint NOT NULL,
-  `vacation_type` tinyint NOT NULL COMMENT '1-寒假, 2-暑假',
-  `year` int NOT NULL COMMENT '2025',
-  `start_date` date NOT NULL,
-  `end_date` date NOT NULL,
-  `reason` varchar(255) NOT NULL,
-  `status` tinyint DEFAULT '0',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `del_flag` char(1) DEFAULT '0',
-  `remark` varchar(500) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-/*Data for the table `biz_vacation_stay` */
 
 /*Table structure for table `dorm_bed` */
 
 DROP TABLE IF EXISTS `dorm_bed`;
 
 CREATE TABLE `dorm_bed` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `room_id` bigint NOT NULL,
-  `bed_no` varchar(10) NOT NULL,
-  `occupant_id` bigint DEFAULT NULL COMMENT '占用者ID，为空表示空闲',
-  `status` tinyint DEFAULT '0',
-  `del_flag` char(1) DEFAULT '0',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
-  `bed_label` varchar(32) DEFAULT NULL COMMENT '床位号',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `room_id` bigint NOT NULL COMMENT '所属房间ID',
+  `bed_label` varchar(20) NOT NULL COMMENT '床位显示标签 (如: 101-1号床)',
+  `occupant_id` bigint DEFAULT NULL COMMENT '当前居住者ID (关联学生表，空则为闲置)',
+  `status` tinyint DEFAULT '0' COMMENT '床位状态 (0:正常 1:报修)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除 (0:未删 1:已删)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`),
+  KEY `fk_bed_room` (`room_id`),
+  KEY `fk_bed_student` (`occupant_id`),
+  CONSTRAINT `fk_bed_room` FOREIGN KEY (`room_id`) REFERENCES `dorm_room` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `fk_bed_student` FOREIGN KEY (`occupant_id`) REFERENCES `sys_ordinary_user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=20007 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍床位表';
 
 /*Data for the table `dorm_bed` */
 
-insert  into `dorm_bed`(`id`,`room_id`,`bed_no`,`occupant_id`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`,`bed_label`) values 
-(50001,40001,'1',60001,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50002,40001,'2',60002,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50003,40001,'3',60005,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50004,40001,'4',60006,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50005,40002,'1',60008,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50006,40002,'2',60009,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50007,40002,'3',NULL,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50008,40002,'4',NULL,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50009,40005,'1',60003,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50010,40005,'2',60004,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50011,40005,'3',60007,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL),
-(50012,40005,'4',NULL,0,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL,NULL);
+insert  into `dorm_bed`(`id`,`room_id`,`bed_label`,`occupant_id`,`status`,`del_flag`,`create_time`,`create_by`,`update_by`,`update_time`,`remark`) values 
+(20001,101,'101-1',10001,0,'0','2026-01-10 16:02:33','admin','',NULL,NULL),
+(20002,101,'101-2',10002,0,'0','2026-01-10 16:02:33','admin','',NULL,NULL),
+(20003,101,'101-3',NULL,0,'0','2026-01-10 16:02:33','admin','',NULL,NULL),
+(20004,101,'101-4',NULL,0,'0','2026-01-10 16:02:33','admin','',NULL,NULL),
+(20005,201,'201-1',10003,0,'0','2026-01-10 16:02:33','admin','',NULL,NULL),
+(20006,201,'201-2',NULL,0,'0','2026-01-10 16:02:33','admin','',NULL,NULL);
 
 /*Table structure for table `dorm_building` */
 
@@ -317,40 +251,54 @@ DROP TABLE IF EXISTS `dorm_building`;
 
 CREATE TABLE `dorm_building` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `campus_id` bigint NOT NULL COMMENT '所属校区ID (关联 sys_campus)',
+  `campus_id` bigint NOT NULL COMMENT '所属校区ID',
   `name` varchar(50) NOT NULL COMMENT '楼栋名称 (如: 南苑1号楼)',
-  `type` int DEFAULT '1' COMMENT '楼宇类型: 1-男生楼, 2-女生楼, 3-混合楼',
-  `floors` int NOT NULL COMMENT '总层数 (用于前端渲染楼层下拉框)',
-  `has_elevator` tinyint(1) DEFAULT '0' COMMENT '是否有电梯: 0-无, 1-有',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除标志: 0-正常, 1-已删除',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍楼信息表';
+  `type` int DEFAULT '1' COMMENT '楼宇类型 (1:男生楼 2:女生楼 3:混合楼)',
+  `floors` int DEFAULT '6' COMMENT '总层数',
+  `manager` varchar(50) DEFAULT NULL COMMENT '宿管负责人姓名',
+  `status` int DEFAULT '1' COMMENT '状态 (1:启用 0:停用/维修)',
+  `location` varchar(100) DEFAULT NULL COMMENT '具体位置描述',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除 (0:未删 1:已删)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`),
+  KEY `fk_building_campus` (`campus_id`),
+  CONSTRAINT `fk_building_campus` FOREIGN KEY (`campus_id`) REFERENCES `sys_campus` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍楼栋表';
 
 /*Data for the table `dorm_building` */
+
+insert  into `dorm_building`(`id`,`campus_id`,`name`,`type`,`floors`,`manager`,`status`,`location`,`del_flag`,`create_time`,`create_by`,`update_by`,`update_time`,`remark`) values 
+(1,1,'北苑1号楼',1,6,'宿管阿姨',1,'北区东侧','0','2026-01-10 16:02:32','admin','',NULL,NULL),
+(2,1,'北苑2号楼',2,6,'宿管阿姨',1,'北区西侧','0','2026-01-10 16:02:32','admin','',NULL,NULL);
 
 /*Table structure for table `dorm_change_request` */
 
 DROP TABLE IF EXISTS `dorm_change_request`;
 
 CREATE TABLE `dorm_change_request` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '申请单ID',
   `student_id` bigint NOT NULL COMMENT '申请学生ID',
-  `current_room_id` bigint NOT NULL COMMENT '当前所在房间ID',
+  `current_room_id` bigint NOT NULL COMMENT '原房间ID',
   `target_room_id` bigint NOT NULL COMMENT '目标房间ID',
-  `reason` varchar(500) NOT NULL COMMENT '换宿原因',
-  `status` int DEFAULT '0' COMMENT '状态: 0-待辅导员审批, 1-待宿管审批, 2-已完成, 3-已驳回',
-  `apply_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
-  `audit_msg` varchar(255) DEFAULT NULL COMMENT '审批意见 (驳回理由等)',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `del_flag` char(1) DEFAULT '0',
-  `remark` varchar(500) DEFAULT NULL,
+  `reason` varchar(500) DEFAULT NULL COMMENT '申请原因',
+  `status` int DEFAULT '0' COMMENT '审批状态 (0:待辅导员审 1:待宿管审 2:已完成 3:已驳回)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '提交时间',
+  `audit_msg` varchar(255) DEFAULT NULL COMMENT '审批意见记录',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='换宿申请记录表';
+) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='调宿申请单表';
 
 /*Data for the table `dorm_change_request` */
+
+insert  into `dorm_change_request`(`id`,`student_id`,`current_room_id`,`target_room_id`,`reason`,`status`,`create_time`,`audit_msg`,`create_by`,`update_by`,`update_time`,`del_flag`) values 
+(1,10001,101,102,'宿舍太吵，想换个安静的',0,'2026-01-10 16:02:33',NULL,'admin','',NULL,'0');
 
 /*Table structure for table `dorm_fixed_asset` */
 
@@ -501,156 +449,79 @@ DROP TABLE IF EXISTS `dorm_room`;
 
 CREATE TABLE `dorm_room` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `building_id` bigint NOT NULL COMMENT '所属楼栋ID (关联 dorm_building)',
-  `floor_no` int NOT NULL COMMENT '所在楼层 (如: 3层)',
-  `room_no` varchar(20) NOT NULL COMMENT '房间号 (可视化的门牌号, 如: 305)',
-  `capacity` int DEFAULT '4' COMMENT '核定床位数 (标准4人间/6人间)',
-  `current_num` int DEFAULT '0' COMMENT '当前居住人数 (实时更新)',
-  `gender` int DEFAULT '1' COMMENT '房间性别限制: 1-男, 2-女',
-  `status` int DEFAULT '1' COMMENT '房间状态: 1-正常, 0-封寝维修(不可分配), 2-已满',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除标志',
+  `building_id` bigint NOT NULL COMMENT '所属楼栋ID',
+  `floor_no` int NOT NULL COMMENT '所在楼层 (如: 3)',
+  `room_no` varchar(20) NOT NULL COMMENT '房间号/门牌号 (如: 305)',
+  `capacity` int DEFAULT '4' COMMENT '核定床位数',
+  `current_num` int DEFAULT '0' COMMENT '当前实住人数',
+  `gender` int DEFAULT '1' COMMENT '性别限制 (0:混合 1:男 2:女)',
+  `status` int DEFAULT '1' COMMENT '房间状态 (1:正常 0:封寝 2:满员)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除 (0:未删 1:已删)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍房间信息表';
+  PRIMARY KEY (`id`),
+  KEY `fk_room_building` (`building_id`),
+  CONSTRAINT `fk_room_building` FOREIGN KEY (`building_id`) REFERENCES `dorm_building` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
+  CONSTRAINT `chk_room_gender` CHECK ((`gender` in (0,1,2)))
+) ENGINE=InnoDB AUTO_INCREMENT=202 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍房间表';
 
 /*Data for the table `dorm_room` */
 
-/*Table structure for table `staff_profile` */
-
-DROP TABLE IF EXISTS `staff_profile`;
-
-CREATE TABLE `staff_profile` (
-  `user_id` bigint NOT NULL,
-  `dept_id` bigint NOT NULL,
-  `job_title` varchar(50) NOT NULL,
-  `contract_type` varchar(20) DEFAULT '3年' COMMENT '1年/3年/长期',
-  `hire_date` date NOT NULL,
-  `expect_leave_date` date DEFAULT NULL,
-  `work_status` tinyint DEFAULT '0' COMMENT '0-在职, 1-请假, 2-退休',
-  `housing_intent` tinyint NOT NULL DEFAULT '0' COMMENT '0-外住, 1-住校',
-  `current_bed_id` bigint DEFAULT NULL,
-  PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-/*Data for the table `staff_profile` */
-
-insert  into `staff_profile`(`user_id`,`dept_id`,`job_title`,`contract_type`,`hire_date`,`expect_leave_date`,`work_status`,`housing_intent`,`current_bed_id`) values 
-(20,21,'讲师','3年','2015-09-01','2024-09-01',0,0,NULL),
-(22,12,'高级电工','1年','2023-01-01','2024-01-01',0,1,NULL),
-(25,11,'宿管员','长期','2010-05-01',NULL,0,1,NULL);
-
-/*Table structure for table `stu_leave_status` */
-
-DROP TABLE IF EXISTS `stu_leave_status`;
-
-CREATE TABLE `stu_leave_status` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `student_id` bigint NOT NULL,
-  `status_type` tinyint NOT NULL COMMENT '0-在校, 1-请假离校, 2-假期离校, 3-实习离校',
-  `start_time` datetime NOT NULL,
-  `update_time` datetime DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  `end_time` datetime DEFAULT NULL,
-  `status` tinyint DEFAULT '0' COMMENT '0-活跃, 1-已销假归校',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='学生考勤请假表';
-
-/*Data for the table `stu_leave_status` */
+insert  into `dorm_room`(`id`,`building_id`,`floor_no`,`room_no`,`capacity`,`current_num`,`gender`,`status`,`del_flag`,`create_time`,`create_by`,`update_by`,`update_time`,`remark`) values 
+(101,1,1,'101',4,2,1,1,'0','2026-01-10 16:02:33','admin','',NULL,NULL),
+(102,1,1,'102',4,0,1,1,'0','2026-01-10 16:02:33','admin','',NULL,NULL),
+(201,2,1,'201',4,1,2,1,'0','2026-01-10 16:02:33','admin','',NULL,NULL);
 
 /*Table structure for table `stu_profile` */
 
 DROP TABLE IF EXISTS `stu_profile`;
 
 CREATE TABLE `stu_profile` (
-  `user_id` bigint NOT NULL,
-  `class_id` bigint NOT NULL,
-  `tutor_id` bigint DEFAULT NULL,
-  `counselor_id` bigint DEFAULT NULL,
-  `entry_year` int NOT NULL,
-  `duration` int NOT NULL COMMENT '学制',
-  `retention_years` int DEFAULT '0',
-  `expect_grad_date` date DEFAULT NULL,
-  `status` tinyint DEFAULT '0' COMMENT '0-在读, 1-休学, 2-延毕, 3-毕业',
-  `status_remark` varchar(255) DEFAULT NULL,
-  `current_bed_id` bigint DEFAULT NULL,
+  `user_id` bigint NOT NULL COMMENT '用户ID (与 sys_ordinary_user.id 一致)',
+  `entry_year` int NOT NULL DEFAULT '2024' COMMENT '入学年份',
+  `status` tinyint DEFAULT '0' COMMENT '学籍状态 (0:在读 1:休学 2:毕业)',
+  `current_bed_id` bigint DEFAULT NULL COMMENT '当前入住床位ID (冗余查询字段)',
   PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='学生学籍档案表';
 
 /*Data for the table `stu_profile` */
 
-insert  into `stu_profile`(`user_id`,`class_id`,`tutor_id`,`counselor_id`,`entry_year`,`duration`,`retention_years`,`expect_grad_date`,`status`,`status_remark`,`current_bed_id`) values 
-(60001,10301,NULL,NULL,2023,4,0,NULL,0,NULL,50001),
-(60002,10301,NULL,NULL,2023,4,0,NULL,0,NULL,50002),
-(60003,10302,NULL,NULL,2023,4,0,NULL,0,NULL,50009),
-(60004,10302,NULL,NULL,2023,4,0,NULL,0,NULL,50010),
-(60005,10303,NULL,NULL,2023,4,0,NULL,0,NULL,50003),
-(60006,10303,NULL,NULL,2023,4,0,NULL,0,NULL,50004),
-(60007,10304,NULL,NULL,2023,4,0,NULL,0,NULL,50011),
-(60008,10304,NULL,NULL,2023,4,0,NULL,0,NULL,50005),
-(60009,10305,NULL,NULL,2023,4,0,NULL,0,NULL,50006),
-(60010,10305,NULL,NULL,2023,4,0,NULL,0,NULL,NULL);
-
-/*Table structure for table `stu_student_profile` */
-
-DROP TABLE IF EXISTS `stu_student_profile`;
-
-CREATE TABLE `stu_student_profile` (
-  `user_id` bigint NOT NULL,
-  `class_id` bigint NOT NULL,
-  `edu_type` varchar(20) DEFAULT '本科',
-  `current_bed_id` bigint DEFAULT NULL,
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
-  PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
-
-/*Data for the table `stu_student_profile` */
-
-insert  into `stu_student_profile`(`user_id`,`class_id`,`edu_type`,`current_bed_id`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(60001,10301,'本科',50001,'admin','2026-01-08 10:32:49',NULL,NULL,NULL);
+insert  into `stu_profile`(`user_id`,`entry_year`,`status`,`current_bed_id`) values 
+(10001,2024,0,20001),
+(10002,2024,0,20002),
+(10003,2024,0,20005);
 
 /*Table structure for table `sys_admin_user` */
 
 DROP TABLE IF EXISTS `sys_admin_user`;
 
 CREATE TABLE `sys_admin_user` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `username` varchar(64) NOT NULL,
-  `password` varchar(100) NOT NULL,
-  `real_name` varchar(50) NOT NULL,
-  `phone` varchar(20) DEFAULT NULL,
-  `role_type` tinyint NOT NULL COMMENT '0-超管, 1-宿管...',
-  `dept_id` bigint DEFAULT NULL,
-  `status` char(1) DEFAULT '0',
-  `del_flag` char(1) DEFAULT '0',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `username` varchar(64) NOT NULL COMMENT '登录账号',
+  `password` varchar(100) NOT NULL COMMENT '加密密码 (BCrypt)',
+  `real_name` varchar(50) NOT NULL COMMENT '真实姓名',
+  `phone` varchar(20) DEFAULT NULL COMMENT '联系电话',
+  `status` char(1) DEFAULT '0' COMMENT '帐号状态 (0:正常 1:停用)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除 (0:未删 1:已删)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `email` varchar(50) DEFAULT NULL COMMENT '电子邮箱',
+  `avatar` varchar(255) DEFAULT NULL COMMENT '头像地址',
+  `remark` varchar(255) DEFAULT NULL COMMENT '备注信息',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_adm_user` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='管理员表';
+  UNIQUE KEY `uk_username` (`username`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='后台管理员表 (宿管/后勤)';
 
 /*Data for the table `sys_admin_user` */
 
-insert  into `sys_admin_user`(`id`,`username`,`password`,`real_name`,`phone`,`role_type`,`dept_id`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(1,'admin','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','系统超管','13800000000',0,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(2,'manager','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','宿管经理','13800000001',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(3,'aunt1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王阿姨','13800000002',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(4,'uncle1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李大叔','13800000003',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(5,'repair1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','维修工张三','13800000004',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(6,'repair2','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','维修工李四','13800000005',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(7,'security1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','保安队长','13800000006',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(8,'counselor1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张辅导员','13800000007',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(9,'counselor2','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王辅导员','13800000008',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10,'logistics','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','后勤主管','13800000009',1,NULL,'0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL);
+insert  into `sys_admin_user`(`id`,`username`,`password`,`real_name`,`phone`,`status`,`del_flag`,`create_time`,`email`,`avatar`,`remark`,`create_by`,`update_by`,`update_time`) values 
+(1,'admin','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','系统超管',NULL,'0','0','2026-01-10 16:02:32',NULL,NULL,NULL,'admin','',NULL),
+(2,'manager','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','宿管阿姨',NULL,'0','0','2026-01-10 16:02:32',NULL,NULL,NULL,'admin','',NULL);
 
 /*Table structure for table `sys_algorithm_config` */
 
@@ -683,180 +554,150 @@ insert  into `sys_algorithm_config`(`id`,`config_key`,`config_value`,`remark`) v
 DROP TABLE IF EXISTS `sys_campus`;
 
 CREATE TABLE `sys_campus` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `campus_name` varchar(100) NOT NULL,
-  `campus_code` varchar(20) NOT NULL,
-  `address` varchar(255) DEFAULT NULL,
-  `status` char(1) DEFAULT '0',
-  `del_flag` char(1) DEFAULT '0',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_campus_code` (`campus_code`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='校区表';
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `campus_name` varchar(100) NOT NULL COMMENT '校区名称 (如: 君山本部)',
+  `campus_code` varchar(20) NOT NULL COMMENT '校区唯一编码',
+  `address` varchar(255) DEFAULT NULL COMMENT '详细地址',
+  `status` char(1) DEFAULT '0' COMMENT '状态 (0:正常 1:停用)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除 (0:未删 1:已删)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='校区信息表';
 
 /*Data for the table `sys_campus` */
 
-insert  into `sys_campus`(`id`,`campus_name`,`campus_code`,`address`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(10001,'君山本部','JS-01','君山市学府路1号','0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10002,'滨海校区','BH-02','滨海大道88号','0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10003,'东城校区','DC-03','东城区科技园路5号','0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10004,'国际学院','GJ-04','自贸区环岛路10号','0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10005,'南山分校','NS-05','南山区创新大道1号','0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10006,'医学院区','YX-06','健康路120号','0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10007,'软件园实训基地','RJ-07','高新南四道','0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10008,'老校区','OLD-08','解放路1949号','1','0','admin','2026-01-08 10:32:49',NULL,NULL,'已废弃'),
-(10009,'在建新校区','NEW-09','未来城核心区','1','0','admin','2026-01-08 10:32:49',NULL,NULL,'建设中'),
-(10010,'虚拟校区','VR-10','线上教学','0','0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(2009251957457895426,'测试新增校区','TEST-001','测试地址888号','0','0','0:1','2026-01-08 21:12:51','0:1','2026-01-08 21:12:51',NULL);
+insert  into `sys_campus`(`id`,`campus_name`,`campus_code`,`address`,`status`,`del_flag`,`create_time`,`create_by`,`update_by`,`update_time`,`remark`) values 
+(1,'君山本部','JS01','学府路1号','0','0','2026-01-10 16:02:32','admin','',NULL,NULL),
+(2,'滨海校区','BH02','滨海大道88号','0','0','2026-01-10 16:02:32','admin','',NULL,NULL);
 
 /*Table structure for table `sys_class` */
 
 DROP TABLE IF EXISTS `sys_class`;
 
 CREATE TABLE `sys_class` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `major_id` bigint NOT NULL COMMENT '所属专业ID',
-  `name` varchar(50) NOT NULL COMMENT '班级名称 (如: 25级网安1班)',
-  `grade` int NOT NULL COMMENT '年级 (如: 2025)',
-  `del_flag` char(1) DEFAULT '0' COMMENT '删除标志',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `major_id` bigint NOT NULL COMMENT '所属专业ID (关联 sys_major)',
+  `name` varchar(50) NOT NULL COMMENT '班级名称 (如: 软工2401班)',
+  `grade` int NOT NULL COMMENT '入学年级 (如: 2024)',
+  `adviser` varchar(50) DEFAULT NULL COMMENT '班主任/辅导员姓名',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除 (0:未删 1:已删)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='班级信息表';
+) ENGINE=InnoDB AUTO_INCREMENT=304 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='行政班级表';
 
 /*Data for the table `sys_class` */
+
+insert  into `sys_class`(`id`,`major_id`,`name`,`grade`,`adviser`,`del_flag`,`create_time`,`create_by`,`update_by`,`update_time`,`remark`) values 
+(301,201,'软工2401班',2024,'张老师','0','2026-01-10 16:02:32','admin','',NULL,NULL),
+(302,202,'网安2401班',2024,'李老师','0','2026-01-10 16:02:32','admin','',NULL,NULL),
+(303,203,'会计2401班',2024,'王老师','0','2026-01-10 16:02:32','admin','',NULL,NULL);
 
 /*Table structure for table `sys_college` */
 
 DROP TABLE IF EXISTS `sys_college`;
 
 CREATE TABLE `sys_college` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `campus_id` bigint NOT NULL COMMENT '所属校区ID',
-  `name` varchar(50) NOT NULL COMMENT '学院名称 (如: 网络安全学院)',
-  `code` varchar(10) NOT NULL COMMENT '学院代码 (如: 06)',
-  `del_flag` char(1) DEFAULT '0' COMMENT '删除标志',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `campus_id` bigint DEFAULT NULL COMMENT '所属校区ID (关联 sys_campus)',
+  `name` varchar(50) NOT NULL COMMENT '学院名称 (如: 计算机学院)',
+  `code` varchar(20) NOT NULL COMMENT '学院代码 (如: CS01)',
+  `sort` int DEFAULT '0' COMMENT '显示排序 (数值越小越靠前)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除 (0:未删 1:已删)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=2 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='学院信息表';
+) ENGINE=InnoDB AUTO_INCREMENT=104 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='二级学院表';
 
 /*Data for the table `sys_college` */
 
-insert  into `sys_college`(`id`,`campus_id`,`name`,`code`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(1,1,'网络安全学院','06','0','admin','2026-01-09 15:41:19',NULL,NULL,NULL);
-
-/*Table structure for table `sys_department` */
-
-DROP TABLE IF EXISTS `sys_department`;
-
-CREATE TABLE `sys_department` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `parent_id` bigint DEFAULT '0',
-  `campus_id` bigint NOT NULL,
-  `dept_name` varchar(100) NOT NULL,
-  `dept_type` tinyint DEFAULT '1',
-  `leader_id` bigint DEFAULT NULL,
-  `sort_order` int DEFAULT '0',
-  `del_flag` char(1) DEFAULT '0',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='部门表';
-
-/*Data for the table `sys_department` */
-
-insert  into `sys_department`(`id`,`parent_id`,`campus_id`,`dept_name`,`dept_type`,`leader_id`,`sort_order`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(10101,0,10001,'计算机学院',1,NULL,1,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10102,0,10001,'机械工程学院',1,NULL,2,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10103,0,10001,'外国语学院',1,NULL,3,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10104,0,10001,'经济管理学院',1,NULL,4,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10105,0,10001,'教务处',2,NULL,5,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10106,0,10001,'学生工作处',2,NULL,6,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10107,0,10001,'后勤保障处',2,NULL,7,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10108,0,10002,'滨海分院',1,NULL,8,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10109,0,10002,'海洋科学系',1,NULL,9,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL),
-(10110,0,10001,'保卫处',2,NULL,10,'0','admin','2026-01-08 10:32:49',NULL,NULL,NULL);
+insert  into `sys_college`(`id`,`campus_id`,`name`,`code`,`sort`,`del_flag`,`create_time`,`create_by`,`update_by`,`update_time`,`remark`) values 
+(101,1,'计算机科学与技术学院','CS',1,'0','2026-01-10 16:02:32','admin','',NULL,NULL),
+(102,1,'网络空间安全学院','SEC',2,'0','2026-01-10 16:02:32','admin','',NULL,NULL),
+(103,2,'经济管理学院','ECO',3,'0','2026-01-10 16:02:32','admin','',NULL,NULL);
 
 /*Table structure for table `sys_major` */
 
 DROP TABLE IF EXISTS `sys_major`;
 
 CREATE TABLE `sys_major` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
-  `college_id` bigint NOT NULL COMMENT '所属学院ID',
-  `name` varchar(50) NOT NULL COMMENT '专业名称 (如: 网络工程)',
-  `del_flag` char(1) DEFAULT '0' COMMENT '删除标志',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `college_id` bigint NOT NULL COMMENT '所属学院ID (关联 sys_college)',
+  `name` varchar(50) NOT NULL COMMENT '专业名称',
+  `level` varchar(20) DEFAULT '本科' COMMENT '培养层次 (本科/专科/硕士/博士)',
+  `duration` int DEFAULT '4' COMMENT '学制年份 (如: 4年)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除 (0:未删 1:已删)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='专业信息表';
+) ENGINE=InnoDB AUTO_INCREMENT=204 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='专业信息表';
 
 /*Data for the table `sys_major` */
+
+insert  into `sys_major`(`id`,`college_id`,`name`,`level`,`duration`,`del_flag`,`create_time`,`create_by`,`update_by`,`update_time`,`remark`) values 
+(201,101,'软件工程','本科',4,'0','2026-01-10 16:02:32','admin','',NULL,NULL),
+(202,102,'网络安全','本科',4,'0','2026-01-10 16:02:32','admin','',NULL,NULL),
+(203,103,'会计学','本科',4,'0','2026-01-10 16:02:32','admin','',NULL,NULL);
 
 /*Table structure for table `sys_ordinary_user` */
 
 DROP TABLE IF EXISTS `sys_ordinary_user`;
 
 CREATE TABLE `sys_ordinary_user` (
-  `id` bigint NOT NULL COMMENT '主键ID',
-  `username` varchar(64) NOT NULL,
-  `password` varchar(100) NOT NULL,
-  `real_name` varchar(50) NOT NULL,
-  `id_card` varchar(50) NOT NULL,
-  `sex` tinyint NOT NULL COMMENT '1男0女',
-  `user_identity` tinyint NOT NULL COMMENT '0-学生, 1-教工',
-  `phone` varchar(20) DEFAULT NULL,
-  `entry_year` int DEFAULT NULL COMMENT '入学/入职年份 (例如 2025)',
-  `edu_level` varchar(10) DEFAULT NULL COMMENT '培养层次 (B-本科, Z-专科, ZB-专升本, Y-研究生, D-博士)',
-  `user_category` int DEFAULT NULL COMMENT '身份分类: 0-学生, 1-职工',
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `username` varchar(64) NOT NULL COMMENT '学号/工号 (登录账号)',
+  `password` varchar(100) NOT NULL COMMENT '加密密码 (BCrypt)',
+  `real_name` varchar(50) NOT NULL COMMENT '真实姓名',
+  `phone` varchar(20) DEFAULT NULL COMMENT '本人手机号',
+  `user_category` int DEFAULT '0' COMMENT '人员类别 (0:学生 1:教职工)',
+  `sex` tinyint DEFAULT '1' COMMENT '性别 (1:男 2:女)',
   `college_id` bigint DEFAULT NULL COMMENT '所属学院ID',
-  `major_id` bigint DEFAULT NULL COMMENT '所属专业ID',
-  `class_id` bigint DEFAULT NULL COMMENT '所属班级ID',
-  `avatar` varchar(255) DEFAULT NULL,
-  `nickname` varchar(50) DEFAULT NULL,
-  `account_status` tinyint DEFAULT '1' COMMENT '1-活跃, 0-禁用',
-  `status` char(1) DEFAULT '0',
-  `create_by` varchar(64) DEFAULT 'SYSTEM',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `remark` varchar(500) DEFAULT NULL,
+  `major_id` bigint DEFAULT NULL COMMENT '所属专业ID (仅学生)',
+  `class_id` bigint DEFAULT NULL COMMENT '所属班级ID (仅学生)',
+  `id_card` varchar(20) DEFAULT NULL COMMENT '身份证号 (用于实名)',
+  `status` char(1) DEFAULT '0' COMMENT '帐号状态 (0:正常 1:停用)',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '入库时间',
+  `ethnicity` varchar(20) DEFAULT NULL COMMENT '民族 (如: 汉族)',
+  `hometown` varchar(50) DEFAULT NULL COMMENT '籍贯 (如: 江苏南京)',
+  `birth_date` date DEFAULT NULL COMMENT '出生日期',
+  `political_status` varchar(20) DEFAULT '群众' COMMENT '政治面貌 (党员/团员/群众)',
+  `email` varchar(50) DEFAULT NULL COMMENT '电子邮箱',
+  `landline` varchar(20) DEFAULT NULL COMMENT '座机/家庭电话',
+  `emergency_contact` varchar(50) DEFAULT NULL COMMENT '紧急联系人姓名',
+  `emergency_phone` varchar(20) DEFAULT NULL COMMENT '紧急联系人电话',
+  `emergency_relation` varchar(20) DEFAULT NULL COMMENT '与本人关系 (父子/母子等)',
+  `residence_type` int DEFAULT '0' COMMENT '居住类型: 0-住校 1-走读/校外租房',
+  `current_address` varchar(255) DEFAULT NULL COMMENT '当前居住地址 (校外居住时必填)',
+  `entry_date` date DEFAULT NULL COMMENT '入学/入职时间',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) DEFAULT '0' COMMENT '删除标志 (之前可能漏了)',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_ord_user` (`username`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='普通用户表';
+  UNIQUE KEY `uk_stuno` (`username`),
+  CONSTRAINT `chk_user_sex` CHECK ((`sex` in (1,2)))
+) ENGINE=InnoDB AUTO_INCREMENT=10004 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='普通用户表 (学生/教职工)';
 
 /*Data for the table `sys_ordinary_user` */
 
-insert  into `sys_ordinary_user`(`id`,`username`,`password`,`real_name`,`id_card`,`sex`,`user_identity`,`phone`,`entry_year`,`edu_level`,`user_category`,`college_id`,`major_id`,`class_id`,`avatar`,`nickname`,`account_status`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(60001,'2023001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张伟','420101200501010001',1,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60002,'2023002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李强','420101200501010002',1,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60003,'2023003','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王芳','420101200501010003',0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60004,'2023004','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','赵敏','420101200501010004',0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60005,'2023005','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','孙悟空','420101200501010005',1,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60006,'2023006','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','猪八戒','420101200501010006',1,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60007,'2023007','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','白骨精','420101200501010007',0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60008,'2023008','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','沙僧','420101200501010008',1,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60009,'2023009','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','唐僧','420101200501010009',1,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(60010,'2023010','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','女儿国王','420101200501010010',0,0,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(70001,'T0001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','风清扬','420101198001010001',1,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL),
-(70002,'T0002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','灭绝师太','420101198001010002',0,1,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,NULL,1,'0','SYSTEM','2026-01-08 10:32:49',NULL,NULL,NULL);
+insert  into `sys_ordinary_user`(`id`,`username`,`password`,`real_name`,`phone`,`user_category`,`sex`,`college_id`,`major_id`,`class_id`,`id_card`,`status`,`create_time`,`ethnicity`,`hometown`,`birth_date`,`political_status`,`email`,`landline`,`emergency_contact`,`emergency_phone`,`emergency_relation`,`residence_type`,`current_address`,`entry_date`,`create_by`,`update_by`,`update_time`,`del_flag`,`remark`) values 
+(10001,'2024001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张三',NULL,0,1,101,201,301,NULL,'0','2026-01-10 16:02:32',NULL,NULL,NULL,'群众',NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,'admin','',NULL,'0',NULL),
+(10002,'2024002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李四',NULL,0,1,101,201,301,NULL,'0','2026-01-10 16:02:32',NULL,NULL,NULL,'群众',NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,'admin','',NULL,'0',NULL),
+(10003,'2024003','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王小美',NULL,0,2,102,202,302,NULL,'0','2026-01-10 16:02:32',NULL,NULL,NULL,'群众',NULL,NULL,NULL,NULL,NULL,0,NULL,NULL,'admin','',NULL,'0',NULL);
 
 /*Table structure for table `sys_role` */
 
@@ -864,37 +705,44 @@ DROP TABLE IF EXISTS `sys_role`;
 
 CREATE TABLE `sys_role` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '角色ID',
-  `role_name` varchar(30) NOT NULL COMMENT '角色名称',
-  `role_key` varchar(100) NOT NULL COMMENT '角色权限字符串',
-  `status` char(1) DEFAULT '0' COMMENT '角色状态（0正常 1停用）',
-  `create_by` varchar(64) DEFAULT 'admin',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
-  `update_by` varchar(64) DEFAULT NULL,
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
-  `del_flag` char(1) DEFAULT '0',
-  `remark` varchar(500) DEFAULT NULL,
+  `role_name` varchar(30) NOT NULL COMMENT '角色名称 (如: 超级管理员)',
+  `role_key` varchar(100) NOT NULL COMMENT '角色权限字符 (如: super_admin)',
+  `status` char(1) DEFAULT '0' COMMENT '状态 (0:正常 1:停用)',
+  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `del_flag` char(1) DEFAULT '0' COMMENT '删除标志',
+  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='角色信息表';
+) ENGINE=InnoDB AUTO_INCREMENT=5 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统角色表';
 
 /*Data for the table `sys_role` */
 
 insert  into `sys_role`(`id`,`role_name`,`role_key`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(1,'超级管理员','super_admin','0','admin','2026-01-09 15:41:19',NULL,NULL,'0',NULL),
-(2,'部门部长','dept_head','0','admin','2026-01-09 15:41:19',NULL,NULL,'0',NULL),
-(3,'宿管员','dorm_manager','0','admin','2026-01-09 15:41:19',NULL,NULL,'0',NULL),
-(4,'辅导员','counselor','0','admin','2026-01-09 15:41:19',NULL,NULL,'0',NULL);
+(1,'超级管理员','super_admin','0','admin','2026-01-10 16:47:57','',NULL,'0',NULL),
+(2,'宿管经理','dorm_manager','0','admin','2026-01-10 16:47:57','',NULL,'0',NULL),
+(3,'辅导员','counselor','0','admin','2026-01-10 16:47:57','',NULL,'0',NULL),
+(4,'学生','student','0','admin','2026-01-10 16:47:57','',NULL,'0',NULL);
 
 /*Table structure for table `sys_user_role` */
 
 DROP TABLE IF EXISTS `sys_user_role`;
 
 CREATE TABLE `sys_user_role` (
-  `user_id` bigint NOT NULL COMMENT '用户ID',
-  `role_id` bigint NOT NULL COMMENT '角色ID',
+  `user_id` bigint NOT NULL,
+  `role_id` bigint NOT NULL,
   PRIMARY KEY (`user_id`,`role_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户和角色关联表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户与角色关联表 (多对多)';
 
 /*Data for the table `sys_user_role` */
+
+insert  into `sys_user_role`(`user_id`,`role_id`) values 
+(1,1),
+(2,2),
+(10001,4),
+(10002,4),
+(10003,4);
 
 /*Table structure for table `sys_utility_price_rule` */
 
@@ -948,6 +796,44 @@ CREATE TABLE `sys_utility_rule` (
 insert  into `sys_utility_rule`(`id`,`rule_name`,`type`,`tier_1_limit`,`tier_1_price`,`tier_2_price`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
 (1,'居民用电',2,200.00,0.588,0.888,'admin','2026-01-09 15:41:19',NULL,NULL,'0',NULL),
 (2,'生活用水',1,10.00,2.800,4.500,'admin','2026-01-09 15:41:19',NULL,NULL,'0',NULL);
+
+/* Trigger structure for table `dorm_bed` */
+
+DELIMITER $$
+
+/*!50003 DROP TRIGGER*//*!50032 IF EXISTS */ /*!50003 `trg_check_gender_before_update` */$$
+
+/*!50003 CREATE */ /*!50017 DEFINER = 'root'@'localhost' */ /*!50003 TRIGGER `trg_check_gender_before_update` BEFORE UPDATE ON `dorm_bed` FOR EACH ROW BEGIN
+    -- 定义变量来存储学生性别和房间性别
+    DECLARE student_sex INT;
+    DECLARE room_gender INT;
+    
+    -- 只有当这次操作是“分配人”(即 occupant_id 不为空) 时才校验
+    -- 如果是“清空床位”(即 occupant_id 设为 NULL)，则不校验，直接通过
+    IF NEW.occupant_id IS NOT NULL THEN
+        
+        -- 1. 查即将入住的学生的性别
+        SELECT sex INTO student_sex 
+        FROM sys_ordinary_user 
+        WHERE id = NEW.occupant_id;
+        
+        -- 2. 查这张床所在房间的限制性别
+        SELECT gender INTO room_gender 
+        FROM dorm_room 
+        WHERE id = NEW.room_id;
+        
+        -- 3. 开始校验逻辑
+        -- 房间性别 0=混合(不限), 1=男, 2=女
+        -- 如果房间有限制 (即 != 0)，且 学生性别 != 房间性别，则报错
+        IF room_gender != 0 AND student_sex != room_gender THEN
+            SIGNAL SQLSTATE '45000' 
+            SET MESSAGE_TEXT = '【数据库拦截】严禁异性混住：学生的性别与宿舍房间规定的性别不符！';
+        END IF;
+    END IF;
+END */$$
+
+
+DELIMITER ;
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

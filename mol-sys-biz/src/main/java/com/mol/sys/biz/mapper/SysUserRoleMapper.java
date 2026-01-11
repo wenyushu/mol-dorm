@@ -9,6 +9,7 @@ import java.util.List;
 
 /**
  * 用户与角色关联 Mapper
+ * 数据访问层
  * 对应表：sys_user_role
  */
 @Mapper

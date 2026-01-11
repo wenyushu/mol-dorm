@@ -35,6 +35,9 @@ public class SysCollege extends BaseEntity {
     @Schema(description = "学院代码 (如: 06, 必须是 2 位数字, 用于生成学号)")
     private String code;
     
+    @Schema(description = "显示排序 (越小越靠前)")
+    private Integer sort;
+    
     @Schema(description = "删除标志 (0-正常, 1-删除)")
     private String delFlag;
 }

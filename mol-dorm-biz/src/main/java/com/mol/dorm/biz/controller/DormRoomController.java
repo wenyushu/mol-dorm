@@ -1,5 +1,6 @@
 package com.mol.dorm.biz.controller;
 
+import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
@@ -22,7 +23,7 @@ public class DormRoomController {
     private final DormRoomService roomService;
     
     // ==================== 1. 公共查询 ====================
-    
+    @SaCheckLogin // 🔒 需要登录
     @Operation(summary = "查询某楼栋房间列表")
     @GetMapping("/list/{buildingId}")
     public R<Page<DormRoomVO>> listByBuilding(
@@ -37,6 +38,7 @@ public class DormRoomController {
     public R<DormRoomVO> getDetail(@PathVariable Long id) {
         return R.ok(roomService.getRoomDetail(id));
     }
+    
     
     // ==================== 2. 高危物理操作 (仅 Super Admin) ====================
     

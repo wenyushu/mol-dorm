@@ -24,7 +24,7 @@ import java.net.UnknownHostException;
 public class MolDormApplication {
     
     public static void main(String[] args)throws UnknownHostException {
-        // 开启 Spring Boot 3.5+ 虚拟线程，优化宿舍分配等耗时业务的并发处理能力
+        // 开启 Spring Boot 3.5+ 虚拟线程（JDK 21），优化宿舍分配等耗时业务的并发处理能力
         System.setProperty("spring.threads.virtual.enabled", "true");
         
         // 1. 启动并获取上下文

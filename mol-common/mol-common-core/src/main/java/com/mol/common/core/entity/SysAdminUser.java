@@ -3,63 +3,56 @@ package com.mol.common.core.entity;
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serial;
 
 /**
- * 系统管理员实体类
- * 对应数据库表：sys_admin_user
+ * 系统管理员实体
+ * <p>
+ * 对应表: sys_admin_user
+ * 包含基础审计字段继承
+ * </p>
+ *
+ * @author mol
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("sys_admin_user")
+@Schema(description = "系统管理员对象")
 public class SysAdminUser extends BaseEntity {
     
     @Serial
     private static final long serialVersionUID = 1L;
     
-    /**
-     * 主键 ID
-     */
+    @Schema(description = "主键 ID")
     @TableId(type = IdType.AUTO)
     private Long id;
     
-    /**
-     * 用户名 (登录账号)
-     */
+    @Schema(description = "登录账号")
     private String username;
     
-    /**
-     * 密码 (加密存储)
-     */
+    @Schema(description = "加密密码")
     private String password;
     
-    /**
-     * 真实姓名
-     */
+    @Schema(description = "真实姓名")
     private String realName;
     
-    /**
-     * 手机号码
-     */
+    @Schema(description = "联系电话")
     private String phone;
     
-    /**
-     * 角色类型
-     * 0-超级管理员, 1-宿管人员, 2-辅导员 ...
-     */
-    private Integer roleType;
+    @Schema(description = "电子邮箱")
+    private String email;
+    
+    @Schema(description = "头像地址")
+    private String avatar;
     
     /**
-     * 所属部门ID (可选)
+     * 帐号状态 (0:正常 1:停用)
+     * 数据库 char(1)
      */
-    private Long deptId;
-    
-    /**
-     * 状态 (0:正常, 1:停用)
-     * 注意：del_flag 在 BaseEntity 里已经有了，这里不需要重复定义
-     */
+    @Schema(description = "帐号状态 (0:正常 1:停用)")
     private String status;
 }
