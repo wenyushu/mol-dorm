@@ -5,6 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.FilterType;
 import org.springframework.core.env.Environment;
 
 import java.net.InetAddress;
@@ -12,32 +13,36 @@ import java.net.UnknownHostException;
 
 /**
  * MOL-DORM 聚合启动类 (模块化单体版)
- * <p>
- * 核心修正：
- * 1. 只启动一个 Spring Context (端口 9090)
- * 2. 通过 @ComponentScan 自动扫描 Sys 和 Dorm 模块
- * 3. 通过 config.import 自动加载子模块配置
- * </p>
  */
 @SpringBootApplication
-// 扫描所有模块的 Bean (Sys, Dorm, Common)
-@ComponentScan("com.mol")
-// 扫描所有模块的 Mapper
+@ComponentScan(
+        basePackages = "com.mol",
+        // 💡 最佳实践：排除子模块的启动类，防止它们重复加载造成干扰
+        excludeFilters = @ComponentScan.Filter(
+                type = FilterType.REGEX,
+                pattern = "com\\.mol\\..*\\.biz\\.Mol.*Application"
+        )
+)
 @MapperScan("com.mol.**.mapper")
 public class MolLauncherApplication {
     
     public static void main(String[] args) throws UnknownHostException {
-        // 开启虚拟线程
+        // 1. 【核武器】强制覆盖端口和 ContextPath
+        // 无论 yaml 里写什么，这里说了算！
+        System.setProperty("server.port", "9090");
+        System.setProperty("server.servlet.context-path", "/api");
+        
+        // 2. 开启虚拟线程
         System.setProperty("spring.threads.virtual.enabled", "true");
         
-        // 启动！
+        // 3. 启动
         ConfigurableApplicationContext application = SpringApplication.run(MolLauncherApplication.class, args);
         
-        // 打印信息
+        // 4. 打印信息
         Environment env = application.getEnvironment();
         String ip = InetAddress.getLocalHost().getHostAddress();
-        String port = env.getProperty("server.port", "9090"); // 获取实际运行端口
-        String path = env.getProperty("server.servlet.context-path", "");
+        String port = env.getProperty("server.port");
+        String path = env.getProperty("server.servlet.context-path");
         
         String localUrl = "http://localhost:" + port + path;
         String externalUrl = "http://" + ip + ":" + port + path;
@@ -52,8 +57,8 @@ public class MolLauncherApplication {
             >>> 统一接口文档 (Knife4j/Swagger):
             %s/swagger-ui/index.html
             
-            >>> 核心模块分组 (自动路由前缀已生效):
-            [系统管理]: %s/swagger-ui/index.html?urls.primaryName=server
+            >>> 核心模块分组:
+            [系统管理]: %s/swagger-ui/index.html?urls.primaryName=sys
             [宿舍业务]: %s/swagger-ui/index.html?urls.primaryName=dorm
             -------------------------------------------------------------
             本地访问: %s

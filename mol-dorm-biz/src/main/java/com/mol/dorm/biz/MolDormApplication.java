@@ -10,19 +10,20 @@ import org.springframework.core.env.Environment;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 
-// 宿舍业务模块独立启动类 (仅用于单独测试 Dorm 模块)
 @SpringBootApplication
 @ComponentScan("com.mol")
 @MapperScan("com.mol.**.mapper")
 public class MolDormApplication {
     
     public static void main(String[] args) throws UnknownHostException {
+        // 1. 【核心修复】强制指定读取 application-dorm.yml
+        System.setProperty("spring.config.name", "application-dorm");
+        
         System.setProperty("spring.threads.virtual.enabled", "true");
         
         ConfigurableApplicationContext application = SpringApplication.run(MolDormApplication.class, args);
         
         Environment env = application.getEnvironment();
-        String ip = InetAddress.getLocalHost().getHostAddress();
         String port = env.getProperty("server.port", "8081");
         String path = env.getProperty("server.servlet.context-path", "");
         String hostUrl = "http://localhost:" + port + path;
