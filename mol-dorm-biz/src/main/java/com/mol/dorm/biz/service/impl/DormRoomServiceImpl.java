@@ -14,7 +14,7 @@ import com.mol.dorm.biz.mapper.DormBedMapper;
 import com.mol.dorm.biz.mapper.DormRoomMapper;
 import com.mol.dorm.biz.service.DormRoomService;
 import com.mol.dorm.biz.vo.DormRoomVO;
-import com.mol.sys.biz.mapper.SysOrdinaryUserMapper; // 引用系统模块 Mapper
+import com.mol.server.mapper.SysOrdinaryUserMapper; // 引用系统模块 Mapper
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;

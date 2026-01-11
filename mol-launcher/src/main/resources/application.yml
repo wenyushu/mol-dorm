@@ -1,44 +1,46 @@
 # ===================================================================
-# MOL-DORM 聚合启动模块全局配置
+# MOL-DORM 聚合启动模块全局配置 (Launcher)
+# 作用：作为最终的启动入口，整合所有子模块的配置
 # ===================================================================
-server:
-  port: 9090 # 聚合启动时，通常占用一个端口
 
 spring:
   application:
     name: mol-launcher
 
-  # 核心修复：显式导入公共数据库配置
+  # 【核心】利用 import 把子模块的配置全部“吸”过来
   config:
     import:
-      - optional:classpath:/common-base.yml
+      - optional:classpath:/common-base.yml         # 1. 基础配置
+      - optional:classpath:/application-server.yml  # 2. 系统模块配置 (注意文件名要和子模块里一致)
+      - optional:classpath:/application-dorm.yml    # 3. 宿舍模块配置
 
   main:
-    # 允许 Bean 定义覆盖 (多模块聚合启动时，防止重名的 Bean 导致冲突)
+    # 允许 Bean 定义覆盖 (多模块聚合时，防止同名 Bean 冲突)
     allow-bean-definition-overriding: true
-    # 禁用 Spring Boot 默认的 Banner 打印，防止控制台字符画重叠太乱
+    # 禁用 Banner，保持控制台整洁
     banner-mode: console
 
   jmx:
-    # 核心配置：禁用 JMX 监控
-    # 原因：多个 Spring Context 在同一个 JVM 运行时，如果都开启 JMX 会报 MBean 已存在的错误
+    # 禁用 JMX 以免多模块上下文冲突
     enabled: false
 
-  # 基础日志配置，统一管理聚合后的输出
+  # 统一日志格式
   output:
     ansi:
       enabled: always
 
-# 日志级别控制
+# 统一日志级别
 logging:
   level:
     root: INFO
     com.mol: INFO
-    # 如果想看 SQL，可以开启此项
+    # 开启 SQL 打印，方便调试
     com.mol.**.mapper: DEBUG
 
 # ===================================================================
-# 聚合模块提示：
-# 各个子模块的具体端口（9000, 8080, 8081）和数据库连接
-# 依然会读取各自模块内的 application-auth.yml 及其引用的 common-base.yml
+# 强制指定聚合端口 (防止被 application-dorm.yml 的 8081 覆盖)
 # ===================================================================
+server:
+  port: 9090 # 聚合启动后的统一端口
+  servlet:
+    context-path: /api # 统一入口前缀，所有接口都将以 /api 开头

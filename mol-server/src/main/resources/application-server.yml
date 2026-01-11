@@ -1,0 +1,51 @@
+# ===================================================================
+# Mol-Dorm 系统管理模块 (System Business Service)
+# ===================================================================
+
+server:
+  port: 8080
+  servlet:
+    # 这里的路径仅影响独立启动。
+    context-path: /api/server
+  tomcat:
+    threads:
+      max: 200
+
+spring:
+  application:
+    name: mol-server # 模块名
+
+  config:
+    import:
+      - optional:classpath:/common-base.yml
+
+  threads:
+    virtual:
+      enabled: true
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: GMT+8
+
+# MyBatis-Plus 配置
+mybatis-plus:
+  mapper-locations: classpath:/mapper/server/*.xml
+  type-aliases-package: com.mol.server.entity
+
+# SpringDoc (Swagger) 配置
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: alpha
+    tags-sorter: alpha
+  info:
+    title: "MOL-Dorm 系统管理模块文档"
+    description: "包含用户认证、权限分配、校区管理等核心基础接口"
+    version: "1.0.0"
+  group-configs:
+    - group: 'sys'
+      paths-to-match: '/**'
+      # Controller 扫描包名
+      packages-to-scan: com.mol.server.controller

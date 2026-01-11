@@ -27,10 +27,8 @@
 
     <modules>
         <module>mol-common</module>
-        <module>mol-api</module>
-        <module>mol-auth</module>
-        <module>mol-sys-biz</module>
         <module>mol-dorm-biz</module>
+        <module>mol-server</module>
         <module>mol-launcher</module>
     </modules>
 
@@ -57,11 +55,6 @@
             <dependency>
                 <groupId>com.mol</groupId>
                 <artifactId>mol-common-security</artifactId>
-                <version>${project.version}</version>
-            </dependency>
-            <dependency>
-                <groupId>com.mol</groupId>
-                <artifactId>mol-api</artifactId>
                 <version>${project.version}</version>
             </dependency>
 

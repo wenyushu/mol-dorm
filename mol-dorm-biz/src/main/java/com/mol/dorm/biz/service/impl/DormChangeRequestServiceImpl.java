@@ -12,7 +12,7 @@ import com.mol.dorm.biz.mapper.DormBedMapper;
 import com.mol.dorm.biz.mapper.DormChangeRequestMapper;
 import com.mol.dorm.biz.mapper.DormRoomMapper;
 import com.mol.dorm.biz.service.DormChangeRequestService;
-import com.mol.sys.biz.mapper.SysOrdinaryUserMapper;
+import com.mol.server.mapper.SysOrdinaryUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

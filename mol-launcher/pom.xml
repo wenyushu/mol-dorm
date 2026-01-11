@@ -16,13 +16,7 @@
     <dependencies>
         <dependency>
             <groupId>com.mol</groupId>
-            <artifactId>mol-auth</artifactId>
-            <version>${project.version}</version>
-        </dependency>
-
-        <dependency>
-            <groupId>com.mol</groupId>
-            <artifactId>mol-sys-biz</artifactId>
+            <artifactId>mol-server</artifactId>
             <version>${project.version}</version>
         </dependency>
 
@@ -30,6 +24,11 @@
             <groupId>com.mol</groupId>
             <artifactId>mol-dorm-biz</artifactId>
             <version>${project.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-web</artifactId>
         </dependency>
 
         <dependency>

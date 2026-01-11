@@ -10,7 +10,7 @@ import com.mol.dorm.biz.mapper.DormBedMapper;
 import com.mol.dorm.biz.mapper.DormRoomMapper;
 import com.mol.dorm.biz.service.DormBedService;
 // 👇 关键 Import：引用系统模块的 UserMapper
-import com.mol.sys.biz.mapper.SysOrdinaryUserMapper;
+import com.mol.server.mapper.SysOrdinaryUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
