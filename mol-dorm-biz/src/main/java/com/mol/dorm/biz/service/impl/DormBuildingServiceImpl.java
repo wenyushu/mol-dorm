@@ -155,7 +155,7 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
             for (int r = 1; r <= roomsPerFloor; r++) {
                 DormRoom room = new DormRoom();
                 room.setBuildingId(buildingId);
-                room.setFloor(f); // 设置楼层
+                room.setFloorNo(f); // 设置楼层
                 
                 // 智能生成房间号：
                 // 如果单层房间少于100 -> 101, 102

@@ -46,7 +46,7 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
      * 新增房间
      * <p>
      * 1. 校验必填项。
-     * 2. 校验同一楼栋下房间号是否重复。
+     * 2. 校验同一楼栋下的房间号是否重复。
      * 3. 保存房间并自动生成配套床位。
      * </p>
      */
@@ -79,7 +79,7 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
     }
     
     /**
-     * 修改房间信息
+     * 修改房间的信息
      * <p>
      * 核心逻辑：
      * 如果修改了容量 (Capacity)，需要联动处理床位。
@@ -173,7 +173,7 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
         // 1. 检查该层是否有人居住
         Long occupiedCount = this.baseMapper.selectCount(new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .eq(DormRoom::getFloor, floor) // 对应 Entity 中的 floor 字段
+                .eq(DormRoom::getFloorNo, floor)
                 .gt(DormRoom::getCurrentNum, 0));
         
         if (occupiedCount > 0) {
@@ -186,7 +186,7 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
         
         this.update(updateEntity, new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .eq(DormRoom::getFloor, floor));
+                .eq(DormRoom::getFloorNo, floor));
         
         log.info("楼层停用成功：楼栋ID={}, 楼层={}", buildingId, floor);
     }
@@ -200,7 +200,7 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
         // 1. 检查该层是否有人
         Long occupiedCount = this.baseMapper.selectCount(new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .eq(DormRoom::getFloor, floor)
+                .eq(DormRoom::getFloorNo, floor)
                 .gt(DormRoom::getCurrentNum, 0));
         
         if (occupiedCount > 0) {
@@ -211,7 +211,7 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
         List<DormRoom> rooms = this.list(new LambdaQueryWrapper<DormRoom>()
                 .select(DormRoom::getId)
                 .eq(DormRoom::getBuildingId, buildingId)
-                .eq(DormRoom::getFloor, floor));
+                .eq(DormRoom::getFloorNo, floor));
         
         if (CollUtil.isEmpty(rooms)) return;
         List<Long> roomIds = rooms.stream().map(DormRoom::getId).collect(Collectors.toList());
@@ -265,7 +265,7 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
         // 1. 查房间分页
         Page<DormRoom> roomPage = this.page(page, new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .orderByAsc(DormRoom::getFloor) // 先按楼层
+                .orderByAsc(DormRoom::getFloorNo) // 先按楼层
                 .orderByAsc(DormRoom::getRoomNo)); // 再按房号
         
         if (CollUtil.isEmpty(roomPage.getRecords())) {

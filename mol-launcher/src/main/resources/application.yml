@@ -1,46 +1,38 @@
 # ===================================================================
-# MOL-DORM 聚合启动模块全局配置 (Launcher)
-# 作用：作为最终的启动入口，整合所有子模块的配置
+# MOL-DORM 聚合启动模块全局配置
 # ===================================================================
-
 spring:
   application:
     name: mol-launcher
 
   # 【核心】利用 import 把子模块的配置全部“吸”过来
+  # 这样 Launcher 启动时，就拥有了数据库连接、MyBatis 配置等所有信息
   config:
     import:
-      - optional:classpath:/common-base.yml         # 1. 基础配置
-      - optional:classpath:/application-server.yml  # 2. 系统模块配置 (注意文件名要和子模块里一致)
-      - optional:classpath:/application-dorm.yml    # 3. 宿舍模块配置
+      - optional:classpath:/common-base.yml
+      - optional:classpath:/application-server.yml    # 系统模块配置
+      - optional:classpath:/application-dorm.yml      # 宿舍业务模块配置
 
   main:
-    # 允许 Bean 定义覆盖 (多模块聚合时，防止同名 Bean 冲突)
+    # 允许 Bean 定义覆盖 (多模块可能有重名的 Bean)
     allow-bean-definition-overriding: true
-    # 禁用 Banner，保持控制台整洁
     banner-mode: console
 
   jmx:
-    # 禁用 JMX 以免多模块上下文冲突
     enabled: false
 
-  # 统一日志格式
   output:
     ansi:
       enabled: always
 
-# 统一日志级别
 logging:
   level:
     root: INFO
     com.mol: INFO
-    # 开启 SQL 打印，方便调试
     com.mol.**.mapper: DEBUG
 
-# ===================================================================
-# 强制指定聚合端口 (防止被 application-dorm.yml 的 8081 覆盖)
-# ===================================================================
+# 端口配置已由 Java 代码 System.setProperty 接管 (9090)，这里写不写都行，为了直观保留
 server:
-  port: 9090 # 聚合启动后的统一端口
+  port: 9090
   servlet:
-    context-path: /api # 统一入口前缀，所有接口都将以 /api 开头
+    context-path: /api

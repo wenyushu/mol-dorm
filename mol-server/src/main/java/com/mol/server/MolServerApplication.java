@@ -15,7 +15,7 @@ import java.net.UnknownHostException;
 public class MolServerApplication {
     
     public static void main(String[] args) throws UnknownHostException {
-        // 1. 【核心修复】强制指定读取 application-server.yml (或者是 application-sys.yml)
+        // 强制指定读取 application-server.yml (或者是 application-sys.yml)
         // 请确认你的 resources 下是 application-server.yml 还是 application-sys.yml
         System.setProperty("spring.config.name", "application-server");
         

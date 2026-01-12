@@ -16,7 +16,7 @@ import java.net.UnknownHostException;
 public class MolDormApplication {
     
     public static void main(String[] args) throws UnknownHostException {
-        // 1. 【核心修复】强制指定读取 application-dorm.yml
+        // 【核心修复】强制指定读取 application-dorm.yml
         System.setProperty("spring.config.name", "application-dorm");
         
         System.setProperty("spring.threads.virtual.enabled", "true");
@@ -30,7 +30,7 @@ public class MolDormApplication {
         
         System.out.println("""
                 -------------------------------------------------------
-                \t(♥◠‿◠)ﾉﾞ  Mol-Dorm [宿舍模块-独立模式] 启动成功   ლ(´ڡ`ლ)ﾞ \s
+                \t(♥◠‿◠)ﾉﾞ  Mol-Dorm [宿舍业务模块-独立模式] 启动成功   ლ(´ڡ`ლ)ﾞ \s
                 \t访问地址:  %s
                 \t文档地址:  %s/swagger-ui/index.html
                 -------------------------------------------------------

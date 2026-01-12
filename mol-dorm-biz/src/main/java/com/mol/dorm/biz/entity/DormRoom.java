@@ -31,17 +31,8 @@ public class DormRoom extends BaseEntity implements Serializable {
     @Schema(description = "所属楼栋 ID")
     private Long buildingId;
     
-    /**
-     * 所在楼层 (核心修复字段)
-     * <p>
-     * 1. 字段名改为 `floor`，是为了匹配 Service 中 `room.setFloor()` 的调用。
-     * 2. 使用 @TableField("floor_no") 依然映射到你数据库里的 `floor_no` 列。
-     * <p>
-     * ⚠️ 修复报错: 无法解析方法 'setFloor'
-     */
     @Schema(description = "所在楼层")
-    @TableField("floor_no") // 数据库列名保持 floor_no 不变
-    private Integer floor;
+    private Integer floorNo;
     
     @Schema(description = "房间号 (如: 305)")
     @TableField("room_no")
@@ -57,13 +48,6 @@ public class DormRoom extends BaseEntity implements Serializable {
     @Schema(description = "房间性别限制 (1:男, 2:女, 0:混合)")
     private Integer gender;
     
-    /**
-     * 房间状态 (核心字段)
-     * 1-正常, 0-维修/封寝
-     * <p>
-     * ⚠️ 修复报错: 无法解析方法 'setStatus'
-     * Service 中 emergencyTransfer 等方法强依赖此字段
-     */
     @Schema(description = "状态: 1-正常, 0-维修")
     private Integer status;
     
