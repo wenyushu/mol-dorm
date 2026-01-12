@@ -1,6 +1,9 @@
 package com.mol.dorm.biz.controller;
 
+import cn.dev33.satoken.annotation.SaCheckRole;
+import com.mol.common.core.constant.RoleConstants;
 
+import com.mol.common.core.entity.SysOrdinaryUser;
 import com.mol.common.core.util.R;
 import com.mol.dorm.biz.service.impl.DormAllocationService;
 import com.mol.server.service.SysOrdinaryUserService;
@@ -23,15 +26,15 @@ public class DormAllocationController {
     private final DormAllocationService allocationService;
     private final SysOrdinaryUserService userService;
     
-    @Operation(summary = "执行一键智能分配")
+    @Operation(summary = "执行一键智能分配 (仅超管)", description = "高危操作！根据画像算法批量分配床位。")
+    @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 仅限超级管理员！宿管都没权限点这个按钮
     @PostMapping("/execute")
     public R<String> executeAllocation(@RequestBody(required = false) List<Long> studentIds) {
-        // 1. 如果前端没传ID，则默认查找所有 “未分配床位” 的学生（模拟一键全员分配）
-        // 这里的逻辑是：查 sys_ordinary_user 表，且不在 dorm_bed 表里的人
-        // 为了演示方便，如果参数为空，我们直接查所有学生ID
+        
+        // 1. 如果前端没传 ID，则默认查找所有 “未分配床位” 的学生（模拟一键全员分配）
         if (studentIds == null || studentIds.isEmpty()) {
-            // 这里简单粗暴一点，获取前 100 个学生用于测试
-            studentIds = userService.list().stream().map(u -> u.getId()).toList();
+            // 这里为了演示，仍然获取前100个。实际生产中应该查 `select id from sys_ordinary_user where ...`
+            studentIds = userService.list().stream().map(SysOrdinaryUser::getId).toList();
         }
         
         if (studentIds.isEmpty()) {
@@ -41,6 +44,6 @@ public class DormAllocationController {
         // 2. 调用核心算法
         allocationService.executeAllocation(studentIds);
         
-        return R.ok("分配计算完成，请查看后台日志或数据库结果");
+        return R.ok("智能分配任务已完成，请查看床位状态。");
     }
 }

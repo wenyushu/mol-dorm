@@ -40,7 +40,7 @@ public interface DormBuildingService extends IService<DormBuilding> {
      * 2. 级联删除该楼下的所有房间。
      * 3. 级联删除该楼下的所有床位。
      * </p>
-     * @param buildingId 楼栋ID
+     * @param buildingId 楼栋 ID
      */
     void deleteBuilding(Long buildingId);
     

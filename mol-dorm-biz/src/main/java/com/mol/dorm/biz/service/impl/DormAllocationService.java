@@ -23,7 +23,7 @@ import java.util.stream.Collectors;
  * 宿舍智能分配核心算法服务 (Pro Max版)
  * <p>
  * 核心架构：基于【分层加权欧几里得距离】的约束贪心聚类算法
- * * 算法流程：
+ * 算法流程：
  * Layer 0: 数据清洗与地缘性预排序 (学院->专业->班级)
  * Layer 1: 硬性物理隔离 (性别、校区)
  * Layer 2: 组队优先策略 (Team Code)
@@ -69,7 +69,7 @@ public class DormAllocationService {
         
         // 2.1 兜底逻辑：如果有学生没填画像，生成默认值，防止算法空指针
         for (SysOrdinaryUser u : users) {
-            prefMap.computeIfAbsent(u.getId(), preferenceService::getByUserId);
+            prefMap.computeIfAbsent(u.getId(), k -> preferenceService.getByUserId(k));
         }
         
         // 3. 按性别分流 (绝对物理隔离)
@@ -79,8 +79,12 @@ public class DormAllocationService {
         
         // 4. 分别并行或串行处理
         // 男生 (gender=1), 女生 (gender=2)
-        processGroupAllocation(1, genderGroups.get(1), prefMap);
-        processGroupAllocation(2, genderGroups.get(2), prefMap);
+        if (genderGroups.containsKey(1)) {
+            processGroupAllocation(1, genderGroups.get(1), prefMap);
+        }
+        if (genderGroups.containsKey(2)) {
+            processGroupAllocation(2, genderGroups.get(2), prefMap);
+        }
         
         log.info(">>> [智能分配] 全部完成，总耗时: {}ms", System.currentTimeMillis() - startTime);
     }
@@ -122,7 +126,8 @@ public class DormAllocationService {
         while (!studentPool.isEmpty() && roomIterator.hasNext()) {
             DormRoom currentRoom = roomIterator.next();
             
-            // 1. 获取该房间剩余空床位数量 (动态容量支持：4/6/8 人间)
+            // 1. 获取该房间剩余空床位数量 (动态容量支持：4/6/8人间)
+            // 注意：房间可能已经住了一部分人（如大二留级生），算法会自动填补空缺
             int neededCount = currentRoom.getCapacity() - currentRoom.getCurrentNum();
             if (neededCount <= 0) continue;
             
@@ -136,12 +141,12 @@ public class DormAllocationService {
             
             // 2.2 为种子寻找最佳室友
             while (roomMates.size() < neededCount && !studentPool.isEmpty()) {
-                // 在池子中寻找与当前房间成员最匹配的人
+                // 在池子中寻找与当前的房间成员最匹配的人
                 SysOrdinaryUser bestMatch = findBestMatch(roomMates, studentPool, prefMap);
                 
                 if (bestMatch != null) {
                     roomMates.add(bestMatch);
-                    studentPool.remove(bestMatch); // 从池中移除
+                    studentPool.remove(bestMatch); // 从池中移除已分配的人
                 } else {
                     // 找不到匹配的人 (可能因为一票否决权导致全员冲突，或者池子空了)
                     // 策略：允许房间不满员，跳过当前房间，进入下一间
@@ -169,7 +174,7 @@ public class DormAllocationService {
                                           List<SysOrdinaryUser> pool,
                                           Map<Long, UserPreference> prefMap) {
         SysOrdinaryUser bestCandidate = null;
-        // 初始设为最大值，寻找越小越好的分数
+        // 初始设为最大值，寻找越小越好的分数（距离越小越相似）
         double minDiscordScore = Double.MAX_VALUE;
         
         // 【性能优化】：搜索窗口限制
@@ -233,7 +238,8 @@ public class DormAllocationService {
         boolean needFridge = StrUtil.contains(pCandidate.getSpecialDisease(), "胰岛素");
         if (needFridge) {
             // 简化逻辑：如果有特殊需求，尽量作为房间的第一个人入住(种子)，或者加入已有同类需求的房间
-            // 如果房间里已经有人且没这需求，为了避免麻烦，这里简单否决(实际可细化)
+            // 这里的逻辑是：如果该房间没有特殊设施标记，且不是空房，为了避免纠纷，暂时否决
+            // (实际业务中可能需要特定的爱心宿舍)
             // return !currentRoom.isEmpty();
         }
         
@@ -241,11 +247,12 @@ public class DormAllocationService {
         for (SysOrdinaryUser member : currentRoom) {
             UserPreference pMember = prefMap.get(member.getId());
             // 例子：一个人 "严重打鼾(2)" 且 另一个人 "神经衰弱(3)" -> 绝对不行
-            if ((pCandidate.getSnoring() == 2 && pMember.getSleepLight() == 3) ||
-                    (pMember.getSnoring() == 2 && pCandidate.getSleepLight() == 3)) {
+            if ((pCandidate.getSnoringLevel() == 2 && pMember.getSleepQuality() == 3) ||
+                    (pMember.getSnoringLevel() == 2 && pCandidate.getSleepQuality() == 3)) {
                 return true;
             }
         }
+        
         return false;
     }
     
@@ -271,7 +278,7 @@ public class DormAllocationService {
         sumSquares += 2.0 * Math.pow(p1.getWakeTime() - p2.getWakeTime(), 2);
         
         // 2. 卫生类指标 (权重 1.5)
-        sumSquares += 1.5 * Math.pow(p1.getAcTempSummer() - p2.getAcTempSummer(), 2); // 空调
+        sumSquares += 1.5 * Math.pow(p1.getAcTemp() - p2.getAcTemp(), 2); // 空调
         sumSquares += 1.5 * Math.pow(p1.getPersonalHygiene() - p2.getPersonalHygiene(), 2); // 个人卫生
         sumSquares += 1.5 * Math.pow(p1.getCleanFreq() - p2.getCleanFreq(), 2); // 打扫频率
         // 轮流刷厕所 (0拒绝 1接受)，如果不一致，平方后是1
@@ -279,9 +286,9 @@ public class DormAllocationService {
         
         // 3. 噪音类指标 (权重 1.5)
         // 动态权重：如果只要有一方睡眠浅(>1)，噪音差异的权重翻倍
-        double noiseWeight = (p1.getSleepLight() > 1 || p2.getSleepLight() > 1) ? 3.0 : 1.0;
+        double noiseWeight = (p1.getSleepQuality() > 1 || p2.getSleepQuality() > 1) ? 3.0 : 1.0;
         sumSquares += noiseWeight * Math.pow(p1.getGameVoice() - p2.getGameVoice(), 2);
-        sumSquares += noiseWeight * Math.pow(p1.getKeyboardType() - p2.getKeyboardType(), 2); // 机械键盘
+        sumSquares += noiseWeight * Math.pow(p1.getKeyboardAxis() - p2.getKeyboardAxis(), 2); // 机械键盘
         
         // 4. 社交与MBTI (权重 0.8)
         // E/I 维度转换: E=1, I=0
@@ -292,7 +299,7 @@ public class DormAllocationService {
         
         // 5. 兴趣爱好 (权重 0.5 - 加分项)
         // 差异越小越好。如果都是二次元(>1)，距离为0，无惩罚。
-        sumSquares += 0.5 * Math.pow(p1.getIsAcg() - p2.getIsAcg(), 2);
+        sumSquares += 0.5 * Math.pow(p1.getIsAnime() - p2.getIsAnime(), 2);
         sumSquares += 0.5 * Math.pow(p1.getGameHabit() - p2.getGameHabit(), 2);
         
         // 开根号返回
@@ -301,24 +308,21 @@ public class DormAllocationService {
     
     /**
      * 获取排序后的可用房间列表
-     * 默认楼栋 ID 是按校区分布的，直接按楼栋排序即可满足 “就近” 原则
+     * 排序逻辑：校区 -> 楼栋 -> 楼层 -> 房间号 (模拟就近分配流)
      */
     private List<DormRoom> getSortedAvailableRooms(Integer gender) {
         return roomService.list(Wrappers.<DormRoom>lambdaQuery()
                         .eq(DormRoom::getGender, gender)
                         .eq(DormRoom::getStatus, 1) // 1=启用
-                        .apply("current_num < capacity") // 必须还有空床位
+                        .apply("current_num < capacity") // 必须还有空床位 (动态容量)
                 ).stream()
-                // 🔴 修正排序逻辑：
-                // 1. 先按楼栋排 (BuildingId) - 同一栋楼的在一起
-                // 2. 再按楼层排 (FloorNo) - 同一层楼的在一起
-                // 3. 最后按房间号排 (RoomNo) - 隔壁房间在一起
+                // 排序逻辑：先按楼栋，再按楼层，最后按房间号
+                // 确保同一个班的同学尽量分在同一层、相邻房间
                 .sorted(Comparator.comparing(DormRoom::getBuildingId)
                         .thenComparing(DormRoom::getFloorNo)
                         .thenComparing(DormRoom::getRoomNo))
                 .collect(Collectors.toList());
     }
-
     
     /**
      * 真实的数据库操作 (落库)
@@ -327,12 +331,12 @@ public class DormAllocationService {
         if (CollUtil.isEmpty(newOccupants)) return;
         
         // 1. 查找该房间内所有的 "空床位"
-        // 必须按床号排序，保证 1 号床、2 号床 顺序填入
+        // 必须按床号排序，保证 1号床、2号床 顺序填入
         List<DormBed> emptyBeds = bedService.list(Wrappers.<DormBed>lambdaQuery()
                 .eq(DormBed::getRoomId, room.getId())
                 .isNull(DormBed::getOccupantId) // 空床
                 .orderByAsc(DormBed::getBedLabel)
-                .last("LIMIT " + newOccupants.size()) // 取出需要的数量
+                .last("LIMIT " + newOccupants.size()) // 只要这么多
         );
         
         if (emptyBeds.size() < newOccupants.size()) {
@@ -376,7 +380,7 @@ public class DormAllocationService {
     }
     
     /**
-     * 处理组队逻辑
+     * 处理组队逻辑 (Team Code)
      */
     private void processTeamCodeLogic(List<SysOrdinaryUser> studentPool,
                                       Map<Long, UserPreference> prefMap,
@@ -404,11 +408,8 @@ public class DormAllocationService {
             // 落库
             persistToDatabase(room, movingIn);
             
-            // 从大池子移除
+            // 从大池子移除已分配的人
             studentPool.removeAll(movingIn);
-            
-            // 如果这个房间没塞满，迭代器不需要动，散户逻辑会继续填满它
-            // 如果塞满了，下一次 next() 会自动取下一个房间
         }
     }
     
