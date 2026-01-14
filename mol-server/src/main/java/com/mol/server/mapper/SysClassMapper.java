@@ -37,6 +37,8 @@ public interface SysClassMapper extends BaseMapper<SysClass> {
         AND (${ew.customSqlSegment})
         ORDER BY c.grade DESC, c.name ASC
     """)
+    
+    // 自定义分页查询
     IPage<SysClassVO> selectClassVoPage(
             Page<SysClassVO> page,
             @Param("ew") com.baomidou.mybatisplus.core.conditions.Wrapper<SysClass> wrapper);

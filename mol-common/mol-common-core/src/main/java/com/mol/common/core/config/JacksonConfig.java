@@ -21,7 +21,7 @@ public class JacksonConfig {
     @Bean
     public Jackson2ObjectMapperBuilderCustomizer jacksonCustomizer() {
         return builder -> {
-            // 核心：将所有 Long 类型序列化为 String
+            // 将 Long 类型序列化为 String，防止前端精度丢失
             builder.serializerByType(Long.class, ToStringSerializer.instance);
             builder.serializerByType(Long.TYPE, ToStringSerializer.instance);
             

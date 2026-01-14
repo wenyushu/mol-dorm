@@ -1,7 +1,6 @@
 package com.mol.dorm.biz.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.mol.common.core.entity.BaseEntity;
@@ -10,13 +9,12 @@ import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 import java.io.Serial;
-import java.io.Serializable;
 
 /**
- * 用户全维度画像实体
+ * 用户全维度画像实体类
  * <p>
- * 对应表: biz_user_preference
- * 包含 50+ 个细分维度，用于宿舍智能分配算法。
+ * 用于存储学生的作息、卫生、性格等详细偏好，是智能分配算法的核心依据。
+ * 继承 BaseEntity 以自动包含 create_time, update_time 等审计字段。
  * </p>
  *
  * @author mol
@@ -24,159 +22,180 @@ import java.io.Serializable;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("biz_user_preference")
-@Schema(description = "用户分配偏好画像")
-public class UserPreference extends BaseEntity implements Serializable {
+@Schema(description = "用户画像/生活习惯偏好")
+public class UserPreference extends BaseEntity {
     
     @Serial
     private static final long serialVersionUID = 1L;
     
-    @Schema(description = "用户ID (手动输入，非自增)")
+    /**
+     * 用户ID
+     * 注意：这里不能用 AUTO，必须是 INPUT，因为它是跟 sys_ordinary_user 的 ID 一一对应的
+     */
     @TableId(type = IdType.INPUT)
+    @Schema(description = "用户ID (关联学生表)")
     private Long userId;
     
-    @Schema(description = "组队码")
+    @Schema(description = "组队码 (拥有相同组队码的学生将被强制分配到同一宿舍)")
     private String teamCode;
     
-    // === 1. 基础作息 (权重: 2.0) ===
-    @Schema(description = "就寝时间: 1-21点...6-2点+")
+    // ==========================================
+    // 1. 作息习惯 (Schedule)
+    // ==========================================
+    
+    @Schema(description = "就寝时间: 1-21点, 2-22点, 3-23点, 4-24点, 5-1点, 6-2点+")
     private Integer bedTime;
     
-    @Schema(description = "起床时间: 1-6点...6-11点+")
+    @Schema(description = "起床时间: 1-6点, 2-7点, 3-8点, 4-9点, 5-10点, 6-11点+")
     private Integer wakeTime;
     
-    @Schema(description = "午睡习惯: 0-无 1-有")
+    @Schema(description = "午睡习惯: 0-无, 1-偶尔, 2-必须午睡(需安静)")
     private Integer siestaHabit;
     
-    @Schema(description = "晚归频率")
+    @Schema(description = "晚归频率: 0-从不, 1-偶尔, 2-经常")
     private Integer outLateFreq;
     
-    // === 2. 睡眠质量 (权重: 2.0) ===
-    @Schema(description = "睡眠深浅 1-4")
+    // ==========================================
+    // 2. 睡眠质量 (Sleep Quality)
+    // ==========================================
+    
+    @Schema(description = "睡眠深浅: 1-雷打不动, 2-普通, 3-轻度敏感, 4-神经衰弱")
     private Integer sleepQuality;
     
-    @Schema(description = "打呼噜 0-3")
-    private Integer snoringLevel; // 对应数据库 snoring
+    @Schema(description = "打呼噜等级: 0-无, 1-轻微, 2-中度, 3-雷震子(严重)")
+    private Integer snoringLevel;
     
-    @Schema(description = "磨牙")
+    @Schema(description = "磨牙: 0-无, 1-有")
     private Integer grindingTeeth;
     
-    @Schema(description = "说梦话")
+    @Schema(description = "说梦话: 0-无, 1-有")
     private Integer sleepTalk;
     
-    @Schema(description = "上下床动静")
+    @Schema(description = "上下床动静: 0-轻盈, 1-普通, 2-拆迁队(动静大)")
     private Integer climbBedNoise;
     
-    // === 3. 卫生习惯 (权重: 1.5) ===
-    @Schema(description = "洗澡频率")
+    // ==========================================
+    // 3. 卫生习惯 (Hygiene)
+    // ==========================================
+    
+    @Schema(description = "洗澡频率: 1-每天, 2-两天一次, 3-不定期")
     private Integer showerFreq;
     
-    @Schema(description = "袜子清洗")
+    @Schema(description = "袜子清洗: 0-当天洗, 1-攒一堆洗")
     private Integer sockWash;
     
-    @Schema(description = "倒垃圾习惯")
+    @Schema(description = "倒垃圾习惯: 1-满了就倒, 2-轮流倒, 3-谁看不下去谁倒")
     private Integer trashHabit;
     
-    @Schema(description = "打扫频率: 1-每天...4-随缘")
-    @TableField("clean_freq") // 显式指定，防止驼峰转换歧义
+    @Schema(description = "打扫频率: 1-每天, 2-每周, 3-每月, 4-随缘")
     private Integer cleanFreq;
     
-    @Schema(description = "刷厕所意愿 1-是 0-否")
+    @Schema(description = "接受轮流刷厕所: 1-完全接受, 0-拒绝")
     private Integer toiletClean;
     
-    @Schema(description = "桌面整洁度")
+    @Schema(description = "桌面整洁度: 1-极简, 2-乱中有序, 3-垃圾堆")
     private Integer deskMessy;
     
-    @Schema(description = "个人卫生评分 1-5")
-    @TableField("personal_hygiene") // 显式指定，确保 getPersonalHygiene() 生成正确
+    @Schema(description = "个人卫生自评: 1-5分 (1分邋遢, 5分洁癖)")
     private Integer personalHygiene;
     
-    @Schema(description = "异味容忍度")
+    @Schema(description = "异味容忍度: 1-无法忍受, 2-普通, 3-毒气室也能住")
     private Integer odorTolerance;
     
-    // === 4. 生活习惯 (权重: 1.5) ===
-    @Schema(description = "抽烟 0-不 1-阳台 2-室内")
+    // ==========================================
+    // 4. 生活嗜好 (Habits)
+    // ==========================================
+    
+    @Schema(description = "抽烟: 0-不抽, 1-阳台抽, 2-室内抽")
     private Integer smoking;
     
-    @Schema(description = "烟味容忍 0-否 1-是")
+    @Schema(description = "接受烟味: 0-不可, 1-可以")
     private Integer smokeTolerance;
     
-    @Schema(description = "喝酒")
+    @Schema(description = "喝酒: 0-无, 1-小酌, 2-酗酒")
     private Integer drinking;
     
-    @Schema(description = "空调温度")
-    private Integer acTemp; // 对应 ac_temp_summer 或 ac_temp
+    @Schema(description = "空调温度习惯: 16-30度")
+    private Integer acTemp;
     
-    @Schema(description = "空调时长")
+    @Schema(description = "空调时长: 1-整晚, 2-定时关闭")
     private Integer acDuration;
     
-    // === 5. 游戏与娱乐 (权重: 1.0) ===
-    @Schema(description = "玩LOL/DOTA")
+    // ==========================================
+    // 5. 游戏与外设 (Gaming & Tech)
+    // ==========================================
+    
+    @Schema(description = "玩LOL/DOTA: 0-否 1-是")
     private Integer gameTypeLol;
-    @Schema(description = "玩FPS")
+    
+    @Schema(description = "玩FPS(CS/瓦/三角洲): 0-否 1-是")
     private Integer gameTypeFps;
-    @Schema(description = "玩3A大作")
+    
+    @Schema(description = "玩3A大作: 0-否 1-是")
     private Integer gameType3a;
-    @Schema(description = "玩MMO")
+    
+    @Schema(description = "玩MMO(剑三/魔兽): 0-否 1-是")
     private Integer gameTypeMmo;
-    @Schema(description = "玩手游")
+    
+    @Schema(description = "玩手游(王者/原神): 0-否 1-是")
     private Integer gameTypeMobile;
     
-    @Schema(description = "游戏习惯 (综合)")
+    @Schema(description = "游戏习惯综合: 0-不玩 1-轻度 2-重度")
     private Integer gameHabit;
     
-    @Schema(description = "连麦音量")
+    @Schema(description = "连麦音量: 0-静音, 1-正常, 2-咆哮")
     private Integer gameVoice;
     
-    @Schema(description = "键盘轴体 (3-青轴吵)")
-    private Integer keyboardAxis; // 对应 keyboard_type 或 keyboard_axis
+    @Schema(description = "键盘轴体: 1-薄膜/静音, 2-红/茶轴, 3-青轴(吵)")
+    private Integer keyboardAxis;
     
-    @Schema(description = "是否Cosplay")
+    // ==========================================
+    // 6. 性格与社交 (Personality)
+    // ==========================================
+    
+    @Schema(description = "玩Cosplay: 0-否 1-是")
     private Integer isCosplay;
     
-    @Schema(description = "二次元浓度")
-    private Integer isAnime; // 对应 is_acg 或 is_anime
+    @Schema(description = "二次元浓度: 0-现充, 1-看番, 2-老二刺螈")
+    private Integer isAnime;
     
-    // === 6. 性格与社交 (权重: 0.8) ===
-    @Schema(description = "MBTI E/I维度")
+    @Schema(description = "MBTI E/I维度: E或I")
     private String mbtiEI;
     
-    @Schema(description = "MBTI完整结果")
+    @Schema(description = "MBTI 完整结果 (如 INTJ)")
     private String mbtiResult;
     
-    @Schema(description = "社交电量 1-5")
+    @Schema(description = "社交意愿: 1-社恐(别理我) -> 5-社牛")
     private Integer socialBattery;
     
-    @Schema(description = "物品共享")
+    @Schema(description = "物品共享意愿: 0-皆不可, 1-部分可借(纸/伞), 2-随意用")
     private Integer shareItems;
     
-    @Schema(description = "带人回寝")
-    private Integer visitors; // 对应 visitors 或 bring_guest
+    @Schema(description = "带人回寝: 0-绝不, 1-偶尔同性, 2-经常, 3-带异性")
+    private Integer bringGuest;
     
-    @Schema(description = "恋爱状态")
+    @Schema(description = "接受访客频率: 同带人回寝")
+    private Integer visitors;
+    
+    @Schema(description = "恋爱状态: 0-单身, 1-恋爱中(可能会煲电话粥)")
     private Integer relationshipStatus;
     
-    // === 7. 健康与特殊 (一票否决) ===
-    @Schema(description = "残疾需求 0-无 1-低层")
-    private Integer hasDisability; // 对应 disability
+    // ==========================================
+    // 7. 特殊需求 (Special Needs) - 一票否决项
+    // ==========================================
     
-    @Schema(description = "胰岛素需求 0-无 1-有")
-    @TableField("special_disease") // 临时映射到 special_disease 字段，如果数据库有 has_insulin 更好
-    private String hasInsulinStr; // 这里处理一下类型转换，或者数据库统一用 special_disease
+    @Schema(description = "身体残疾: 0-无, 1-腿部残疾(需低层)")
+    private Integer hasDisability;
     
-    // 为了兼容代码逻辑，手动增加一个 getter，如果 specialDisease 包含 "胰岛素" 返回 1
-    public Integer getHasInsulin() {
-        if (specialDisease != null && specialDisease.contains("胰岛素")) {
-            return 1;
-        }
-        return 0;
-    }
+    @Schema(description = "胰岛素需求: 0-无, 1-需要冰箱")
+    private Integer hasInsulin;
     
-    @Schema(description = "传染病 0-无 1-有")
-    private Integer hasInfectious; // 如果数据库没这个字段，代码逻辑里先默认0
+    @Schema(description = "传染性疾病: 0-无, 1-有(需单独处理)")
+    private Integer hasInfectious;
+    
+    @Schema(description = "宗教禁忌 (如清真)")
+    private String religionTaboo;
     
     @Schema(description = "特殊疾病描述")
     private String specialDisease;
-    
-    @Schema(description = "宗教禁忌")
-    private String religionTaboo; // 对应 religion_habit
 }

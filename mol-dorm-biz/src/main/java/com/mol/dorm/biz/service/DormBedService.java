@@ -45,4 +45,11 @@ public interface DormBedService extends IService<DormBed> {
      * @param userId 学生 ID
      */
     void confirmCheckIn(Long userId);
+    
+    /**
+     * 根据学生 ID 查询当前床位 (新增)
+     * @param studentId 学生 ID
+     * @return 床位信息 (若无床位返回null)
+     */
+    DormBed getBedByStudentId(Long studentId);
 }

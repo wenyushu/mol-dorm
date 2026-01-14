@@ -3,6 +3,7 @@ package com.mol.server.controller;
 import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mol.common.core.constant.RoleConstants;
 import com.mol.common.core.util.R;
 import com.mol.server.entity.SysClass;
@@ -159,7 +160,7 @@ public class SysOrgController {
     
     /**
      * ✅ 增强功能：分页查询班级详情 (返回 VO)
-     * 解决前端展示 "网络安全学院 网络安全 本科 24级网络安全1班" 的需求
+     * 解决前端展示 "网络安全学院 网络安全 本科 24级网络安全 1 班" 的需求
      */
     @SaCheckLogin
     @Operation(summary = "分页查询班级列表 (含全名)", description = "返回结果包含：学院名、专业名、层次、以及拼接好的全名")
@@ -169,18 +170,14 @@ public class SysOrgController {
             @Parameter(description = "大小") @RequestParam(defaultValue = "10") Integer pageSize,
             @Parameter(description = "年级筛选") @RequestParam(required = false) Integer grade,
             @Parameter(description = "班级名模糊搜") @RequestParam(required = false) String name) {
-        
+
         // 构造查询参数实体
         SysClass queryParam = new SysClass();
         queryParam.setGrade(grade);
-        queryParam.setName(name);
+        queryParam.setClassName(name);
         
-        // 调用 Service 的增强查询方法
-        // 注意：你需要在 SysClassService 中实现这个方法，调用 Mapper 的 selectClassVoPage
-        // return R.ok(classService.getClassVoPage(new Page<>(pageNum, pageSize), queryParam));
-        
-        // ⚠️ 临时代码（如果你还没写 Service 实现，请先用这个占位，否则报错）：
-        return R.ok(null);
+        // 调用 Service
+        return R.ok(classService.getClassVoPage(new Page<>(pageNum, pageSize), queryParam));
     }
     
     /**

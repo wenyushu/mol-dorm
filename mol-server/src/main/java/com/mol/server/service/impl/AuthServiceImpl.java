@@ -7,10 +7,11 @@ import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mol.common.core.entity.SysAdminUser;
 import com.mol.common.core.entity.SysOrdinaryUser;
-import com.mol.common.core.entity.SysRole;
+
 import com.mol.common.core.entity.SysUserRole;
 import com.mol.common.core.exception.ServiceException;
 import com.mol.server.dto.LoginBody;
+import com.mol.server.entity.SysRole;
 import com.mol.server.mapper.SysAdminUserMapper;
 import com.mol.server.mapper.SysOrdinaryUserMapper;
 import com.mol.server.mapper.SysRoleMapper;
@@ -26,9 +27,6 @@ import java.util.stream.Collectors;
 
 /**
  * 认证服务实现
- * <p>
- * 负责统一登录逻辑，支持管理员和普通用户(学生/老师)
- * </p>
  *
  * @author mol
  */
@@ -42,9 +40,10 @@ public class AuthServiceImpl implements AuthService {
     private final SysUserRoleMapper userRoleMapper;
     private final SysRoleMapper roleMapper;
     
-    /**
-     * 统一登录接口
-     */
+    // 定义ID前缀常量，防止硬编码
+    private static final String PREFIX_ADMIN = "ADMIN:";
+    private static final String PREFIX_STUDENT = "STU:";
+    
     @Override
     public LoginVO login(LoginBody loginBody) {
         // 1. 校验参数
@@ -56,7 +55,8 @@ public class AuthServiceImpl implements AuthService {
             throw new ServiceException("账号、密码或用户类型不能为空");
         }
         
-        Long userId;
+        Long originalUserId; // 数据库原始 ID
+        String loginId;      // Sa-Token 用的唯一登录标识
         String realName;
         String avatar;
         String roleKey;
@@ -67,40 +67,26 @@ public class AuthServiceImpl implements AuthService {
             SysAdminUser admin = adminUserMapper.selectOne(new LambdaQueryWrapper<SysAdminUser>()
                     .eq(SysAdminUser::getUsername, username));
             
-            if (admin == null) {
-                throw new ServiceException("管理员账号不存在");
-            }
-            if (!BCrypt.checkpw(password, admin.getPassword())) {
-                throw new ServiceException("密码错误");
-            }
-            if ("1".equals(admin.getStatus())) {
-                throw new ServiceException("账号已停用，请联系上级");
-            }
+            if (admin == null) throw new ServiceException("管理员账号不存在");
+            if (!BCrypt.checkpw(password, admin.getPassword())) throw new ServiceException("密码错误");
+            if ("1".equals(admin.getStatus())) throw new ServiceException("账号已停用，请联系上级");
             
-            userId = admin.getId();
+            originalUserId = admin.getId();
+            // [Fix] 拼接前缀，解决ID冲突
+            loginId = PREFIX_ADMIN + originalUserId;
+            
             realName = admin.getRealName();
             avatar = admin.getAvatar();
             
-            // 从数据库动态查询角色 (RBAC)
-            // 步骤A: 查 sys_user_role 关联表
+            // 动态查询角色
             List<SysUserRole> userRoles = userRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
-                    .eq(SysUserRole::getUserId, userId));
+                    .eq(SysUserRole::getUserId, originalUserId));
             
             if (CollUtil.isNotEmpty(userRoles)) {
-                // 步骤B: 提取所有 roleId
-                List<Long> roleIds = userRoles.stream()
-                        .map(SysUserRole::getRoleId)
-                        .collect(Collectors.toList());
-                
-                // 步骤C: 查 sys_role 表获取 roleKey
+                List<Long> roleIds = userRoles.stream().map(SysUserRole::getRoleId).collect(Collectors.toList());
                 List<SysRole> roles = roleMapper.selectByIds(roleIds);
-                
-                // 步骤D: 拼接为字符串 (如 "super_admin,dorm_manager")
-                roleKey = roles.stream()
-                        .map(SysRole::getRoleKey)
-                        .collect(Collectors.joining(","));
+                roleKey = roles.stream().map(SysRole::getRoleKey).collect(Collectors.joining(","));
             } else {
-                // 如果没分配角色，给一个默认值防止报错
                 roleKey = "guest";
             }
             
@@ -109,35 +95,32 @@ public class AuthServiceImpl implements AuthService {
             SysOrdinaryUser user = ordinaryUserMapper.selectOne(new LambdaQueryWrapper<SysOrdinaryUser>()
                     .eq(SysOrdinaryUser::getUsername, username));
             
-            if (user == null) {
-                throw new ServiceException("学号/工号不存在");
-            }
-            if (!BCrypt.checkpw(password, user.getPassword())) {
-                throw new ServiceException("密码错误");
-            }
-            if ("1".equals(user.getStatus())) {
-                throw new ServiceException("账号已停用，请联系宿管");
-            }
+            if (user == null) throw new ServiceException("学号/工号不存在");
+            if (!BCrypt.checkpw(password, user.getPassword())) throw new ServiceException("密码错误");
+            if ("1".equals(user.getStatus())) throw new ServiceException("账号已停用，请联系宿管");
             
-            userId = user.getId();
+            originalUserId = user.getId();
+            // [Fix] 拼接前缀
+            loginId = PREFIX_STUDENT + originalUserId;
+            
             realName = user.getRealName();
             avatar = null;
-            // 学生/教工的角色逻辑比较简单，直接根据 userCategory 判断
             roleKey = (user.getUserCategory() != null && user.getUserCategory() == 1) ? "teacher" : "student";
         }
         
-        // 3. 执行 Sa-Token 登录
-        StpUtil.login(userId);
+        // 3. 执行 Sa-Token 登录 (使用带前缀的 ID)
+        StpUtil.login(loginId);
         
         // 4. 缓存关键信息到 Session
         StpUtil.getSession().set("role", roleKey);
         StpUtil.getSession().set("name", realName);
         StpUtil.getSession().set("type", userType);
+        StpUtil.getSession().set("originalId", originalUserId); // 缓存原始 ID 方便后续业务获取
         
         // 5. 返回结果
         LoginVO vo = new LoginVO();
         vo.setToken(StpUtil.getTokenValue());
-        vo.setUserId(userId);
+        vo.setUserId(originalUserId); // 返回给前端的还是原始 ID
         vo.setRealName(realName);
         vo.setRole(roleKey);
         vo.setAvatar(avatar);

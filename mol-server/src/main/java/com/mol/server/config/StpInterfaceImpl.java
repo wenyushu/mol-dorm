@@ -1,6 +1,7 @@
 package com.mol.server.config;
 
 import cn.dev33.satoken.stp.StpInterface;
+import cn.hutool.core.util.StrUtil;
 import com.mol.common.core.constant.RoleConstants;
 import com.mol.common.core.entity.SysOrdinaryUser;
 import com.mol.server.mapper.SysOrdinaryUserMapper;
@@ -20,11 +21,15 @@ import java.util.List;
  * 在用户登录验证通过后，Sa-Token 会回调此接口，
  * 获取该用户拥有的【角色列表】和【权限列表】，用于 @SaCheckRole 等注解的鉴权。
  * </p>
+ * * 对应业务场景：
+ * 1. 学生提交申请 -> 需要 "student" 角色 (由此类自动赋予)
+ * 2. 辅导员/宿管审批 -> 需要 "counselor"/"dorm_manager" 角色 (从数据库加载)
+ * 3. 超管强制操作 -> 需要 "super_admin" 角色 (硬编码兜底 + 数据库)
  *
  * @author mol
  */
 @Slf4j
-@Component // 必须交给 Spring 管理
+@Component // 必须交给 Spring 管理，否则 Sa-Token 无法扫描到
 @RequiredArgsConstructor
 public class StpInterfaceImpl implements StpInterface {
     
@@ -32,43 +37,50 @@ public class StpInterfaceImpl implements StpInterface {
     private final SysOrdinaryUserMapper ordinaryUserMapper;
     
     // 用户类型常量 (0:管理员, 1:普通用户)
-    // 必须与 AuthService 登录时构建 LoginId 的逻辑保持一致
+    // 必须与 AuthService.login() 中构建 LoginId 的逻辑 ("0:123" 或 "1:456") 保持一致
     private static final int TYPE_ADMIN = 0;
     private static final int TYPE_ORDINARY = 1;
     
     /**
-     * 返回一个账号所拥有的权限码集合 (Permissions)
+     * 返回一个账号所拥有的【权限码】集合 (Permissions)
      * <p>
-     * 例如：user:add, user:delete
-     * 目前系统主要基于【角色】(Role) 鉴权，权限码暂时留空。
-     * 如果是超级管理员，也可以返回 "*" 表示所有权限。
+     * 目前系统主要基于【角色】(Role) 鉴权，权限码暂时作为补充。
+     * 策略：如果是超级管理员，直接返回 "*" (拥有所有权限)。
      * </p>
      */
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
-        // 如果需要给超管最高权限，可以这样写：
-
+        List<String> permissions = new ArrayList<>();
+        
+        // 1. 获取该用户拥有的角色
         List<String> roleList = getRoleList(loginId, loginType);
+        
+        // 2. 如果包含超级管理员角色，赋予所有权限
         if (roleList.contains(RoleConstants.SUPER_ADMIN)) {
-            return Collections.singletonList("*");
+            permissions.add("*");
         }
-
-        return new ArrayList<>();
+        
+        // 3. (可选) 这里可以继续查 sys_role_menu 表加载细粒度权限
+        // permissions.addAll(menuMapper.selectPermsByUserId(...));
+        
+        return permissions;
     }
     
     /**
-     * 返回一个账号所拥有的角色标识集合 (Roles)
+     * 返回一个账号所拥有的【角色标识】集合 (Roles)
      * <p>
-     * 核心鉴权逻辑：解析 LoginId -> 判断用户类型 -> 查询对应的表或硬编码
-     * loginId 格式示例: "0:1" (超管), "1:60001" (学生)
+     * 核心鉴权逻辑：解析 LoginId -> 判断用户类型 -> 查询对应的表或硬编码赋予
      * </p>
+     * * @param loginId 登录ID，格式约定为 "UserType:UserId" (例如 "0:1", "1:1005")
+     * @param loginType 登录体系标识 (通常是 "login")
+     * @return 角色列表 (例如 ["student"], ["dorm_manager", "counselor"])
      */
     @Override
     public List<String> getRoleList(Object loginId, String loginType) {
         String loginIdStr = (String) loginId;
         
-        // 1. 安全校验：LoginId 格式必须正确
-        if (loginIdStr == null || !loginIdStr.contains(":")) {
+        // 1. 安全校验：LoginId 格式必须正确，防止解析异常
+        if (StrUtil.isBlank(loginIdStr) || !loginIdStr.contains(":")) {
             return Collections.emptyList();
         }
         
@@ -83,7 +95,7 @@ public class StpInterfaceImpl implements StpInterface {
             userType = Integer.parseInt(parts[0]);
             userId = Long.parseLong(parts[1]);
         } catch (NumberFormatException e) {
-            log.error("LoginId 解析失败: {}", loginIdStr);
+            log.error("Sa-Token 鉴权失败，LoginId 格式错误: {}", loginIdStr);
             return Collections.emptyList();
         }
         
@@ -99,12 +111,13 @@ public class StpInterfaceImpl implements StpInterface {
             // 优势：即使数据库 sys_user_role 表数据丢失，超管依然能登录系统进行修复
             if (userId == 1L) {
                 roles.add(RoleConstants.SUPER_ADMIN);
+                // 超管通常也拥有所有其他角色的能力，如果需要也可以不 return，继续往下加
                 return roles;
             }
             
-            // 【普通管理员】(如宿管、辅导员)
-            // 查询 sys_user_role 关联表获取角色 Key (例如: "dorm_manager", "counselor")
-            // 注意：selectRoleKeysByUserId 方法需要在 SysUserRoleMapper 中自定义实现
+            // 【普通管理员】(如宿管、辅导员、后勤部长)
+            // 逻辑：查询 sys_user_role 中间表 -> 关联 sys_role 表 -> 获取 role_key
+            // 对应 SQL: SELECT r.role_key FROM sys_role r ... WHERE ur.user_id = ?
             List<String> dbRoles = userRoleMapper.selectRoleKeysByUserId(userId);
             if (dbRoles != null && !dbRoles.isEmpty()) {
                 roles.addAll(dbRoles);
@@ -115,17 +128,21 @@ public class StpInterfaceImpl implements StpInterface {
             // 情况 B: 普通用户体系 (SysOrdinaryUser)
             // ==========================================
             
-            // 普通用户通常不配置 sys_user_role 表，而是根据用户属性直接映射
+            // 普通用户通常不配置 sys_user_role 表，而是根据【人员类别】属性直接映射
+            // 这样可以减少数据库维护成本，学生注册即自动拥有 student 角色
             SysOrdinaryUser user = ordinaryUserMapper.selectById(userId);
             if (user != null && user.getUserCategory() != null) {
-                // user_category: 0-学生, 1-职工
+                // user_category: 0-学生, 1-教职工
                 if (user.getUserCategory() == 0) {
-                    roles.add(RoleConstants.STUDENT);
+                    roles.add(RoleConstants.STUDENT); // 赋予 "student" 角色
                 } else if (user.getUserCategory() == 1) {
-                    roles.add(RoleConstants.STAFF);
+                    roles.add(RoleConstants.STAFF);   // 赋予 "staff" 角色
                 }
             }
         }
+        
+        // 打印日志方便调试 (生产环境可调整级别)
+        // log.debug("用户 [{}] 加载角色: {}", loginIdStr, roles);
         
         return roles;
     }

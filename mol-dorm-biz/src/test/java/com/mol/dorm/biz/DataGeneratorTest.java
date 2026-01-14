@@ -15,7 +15,6 @@ import java.util.ArrayList;
 import java.util.List;
 
 @SpringBootTest(classes = MolDormApplication.class)
-// 激活 'dorm' 环境，自动读取 application-dorm.yml
 @ActiveProfiles("dorm")
 public class DataGeneratorTest {
     
@@ -42,7 +41,7 @@ public class DataGeneratorTest {
             // 1. 用户基础信息
             SysOrdinaryUser u = new SysOrdinaryUser();
             u.setUsername(prefix + "_" + RandomUtil.randomNumbers(4));
-            u.setPassword("123456"); // 模拟密码，测试阶段直接明文
+            u.setPassword("123456"); // 测试阶段明文
             u.setRealName(sex == 1 ? getMaleName() : getFemaleName());
             u.setSex(sex);
             u.setUserCategory(0); // 学生
@@ -50,7 +49,7 @@ public class DataGeneratorTest {
             u.setMajorId(majId);
             u.setClassId(clsId);
             u.setEntryDate(LocalDate.now());
-            u.setEthnicity(RandomUtil.randomInt(10) == 0 ? "回族" : "汉族"); // 10%少数民族
+            u.setEthnicity(RandomUtil.randomInt(10) == 0 ? "回族" : "汉族");
             
             userService.save(u); // 保存以获取 ID
             users.add(u);
@@ -59,20 +58,34 @@ public class DataGeneratorTest {
             UserPreference p = new UserPreference();
             p.setUserId(u.getId());
             
-            // 随机性格：抽烟(20%)，熬夜(1-5)，呼噜(10%)
+            // 随机性格
             p.setSmoking(RandomUtil.randomInt(100) < 20 ? 1 : 0);
             p.setSmokeTolerance(RandomUtil.randomInt(2)); // 0不能忍, 1能忍
             p.setBedTime(RandomUtil.randomInt(1, 6)); // 1(早)-5(晚)
             p.setWakeTime(RandomUtil.randomInt(1, 6));
-            p.setSnoring(RandomUtil.randomInt(100) < 10 ? 2 : 0); // 10%严重打呼噜
-            p.setSleepLight(RandomUtil.randomInt(100) < 20 ? 3 : 1); // 20%神经衰弱
             
-            // 模拟组队 (每10个人里有一组想住一起的)
+            // [Fix] 修正方法名: setSnoring -> setSnoringLevel
+            p.setSnoringLevel(RandomUtil.randomInt(100) < 10 ? 2 : 0);
+            
+            // [Fix] 修正方法名: setSleepLight -> setSleepQuality
+            // 睡眠质量: 1-雷打不动, 2-普通, 3-轻度敏感, 4-神经衰弱
+            p.setSleepQuality(RandomUtil.randomInt(100) < 20 ? 4 : 2);
+            
+            // 补充必填字段默认值 (防止插入报错)
+            p.setCleanFreq(2);
+            p.setGameVoice(1);
+            p.setKeyboardAxis(1);
+            p.setVisitors(0);
+            p.setAcTemp(26);
+            
+            // 模拟组队
             if (i > 0 && i % 8 == 0) {
-                p.setTeamCode("TEAM_" + prefix + "_" + i);
+                String teamCode = "TEAM_" + prefix + "_" + i;
+                p.setTeamCode(teamCode);
                 // 把上一个人也设为这个 Team
-                UserPreference prev = prefs.get(prefs.size() - 1);
-                prev.setTeamCode("TEAM_" + prefix + "_" + i);
+                if (!prefs.isEmpty()) {
+                    prefs.get(prefs.size() - 1).setTeamCode(teamCode);
+                }
             }
             
             prefs.add(p);

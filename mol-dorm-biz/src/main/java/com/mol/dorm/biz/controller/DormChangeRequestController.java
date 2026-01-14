@@ -23,12 +23,10 @@ public class DormChangeRequestController {
     
     private final DormChangeRequestService requestService;
     
-    @Operation(summary = "提交调宿申请", description = "学生可提交，需登录")
-    @SaCheckLogin // 🔒 需要登录
+    @Operation(summary = "提交普通换房申请", description = "需指定目标房间 ID")
+    @SaCheckLogin
     @PostMapping("/submit")
-    // 返回类型改为 R<Void> 比较合适，因为 Service 返回 void
     public R<Void> submit(@RequestBody DormChangeRequest request) {
-        // 使用 StpUtil.getLoginIdAsLong() 获取当前登录用户 ID，比传参更安全
         requestService.submitRequest(
                 StpUtil.getLoginIdAsLong(),
                 request.getTargetRoomId(),
@@ -37,8 +35,34 @@ public class DormChangeRequestController {
         return R.ok();
     }
     
-    @Operation(summary = "查询列表", description = "所有人可查")
-    @SaCheckLogin // 🔒 需要登录
+    @Operation(summary = "提交退宿/休学申请", description = "无需目标房间")
+    @SaCheckLogin
+    @PostMapping("/submit-leave")
+    public R<Void> submitLeave(@RequestBody DormChangeRequest request) {
+        requestService.submitLeaveRequest(
+                StpUtil.getLoginIdAsLong(),
+                request.getReason()
+        );
+        return R.ok();
+    }
+    
+    @Operation(summary = "提交互换申请", description = "需指定互换目标学生 ID")
+    @SaCheckLogin
+    @PostMapping("/submit-swap")
+    public R<Void> submitSwap(@RequestBody DormChangeRequest request) {
+        if (request.getSwapStudentId() == null) {
+            return R.failed("必须指定互换目标学生");
+        }
+        requestService.submitSwapRequest(
+                StpUtil.getLoginIdAsLong(),
+                request.getSwapStudentId(),
+                request.getReason()
+        );
+        return R.ok();
+    }
+    
+    @Operation(summary = "查询申请列表", description = "普通用户查自己，管理员可查所有")
+    @SaCheckLogin
     @GetMapping("/list")
     public R<Page<DormChangeRequest>> list(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
@@ -46,8 +70,8 @@ public class DormChangeRequestController {
             @Parameter(description = "状态") @RequestParam(required = false) Integer status) {
         
         Page<DormChangeRequest> page = new Page<>(pageNum, pageSize);
-        // 注意：如果不是管理员，那么设定就只能自己查自己的
         Long userId = null;
+        
         if (!StpUtil.hasRole(RoleConstants.SUPER_ADMIN) &&
                 !StpUtil.hasRole(RoleConstants.DORM_MANAGER) &&
                 !StpUtil.hasRole(RoleConstants.COUNSELOR)) {
@@ -57,7 +81,7 @@ public class DormChangeRequestController {
         return R.ok(requestService.getRequestList(page, userId, status));
     }
     
-    @Operation(summary = "审批申请 (同意/拒绝)", description = "仅限管理人员")
+    @Operation(summary = "审批申请 (同意/拒绝)", description = "辅导员或宿管使用")
     @SaCheckRole(value = {
             RoleConstants.SUPER_ADMIN,
             RoleConstants.DORM_MANAGER,
@@ -69,7 +93,6 @@ public class DormChangeRequestController {
             @RequestParam Boolean agree,
             @RequestParam(required = false) String remark) {
         
-        // 调用新写的 approveRequest 方法
         requestService.approveRequest(requestId, agree, remark);
         return R.ok();
     }

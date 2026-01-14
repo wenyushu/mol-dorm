@@ -1,7 +1,8 @@
 package com.mol.server.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.mol.common.core.entity.SysRole;
+
+import com.mol.server.entity.SysRole;
 import org.apache.ibatis.annotations.Mapper;
 
 /**

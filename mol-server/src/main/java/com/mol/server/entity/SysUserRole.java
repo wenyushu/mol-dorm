@@ -1,32 +1,34 @@
 package com.mol.server.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
-import lombok.AllArgsConstructor;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import lombok.NoArgsConstructor;
 
+import java.io.Serial;
 import java.io.Serializable;
 
 /**
- * 用户和角色关联表
- * 对应数据库：sys_user_role
+ * 用户和角色关联实体
+ * <p>
+ * 对应表: sys_user_role
+ * </p>
  */
 @Data
-@NoArgsConstructor  // 生成无参构造
-@AllArgsConstructor // 生成全参构造 -> 方便 new SysUserRole(userId, roleId)
 @TableName("sys_user_role")
+@Schema(description = "用户角色关联")
 public class SysUserRole implements Serializable {
     
-    // 不需要 @TableId，因为关联表通常使用联合主键，或者干脆没有单列主键
-    // MyBatis-Plus 操作这种表时，通常使用 Wrapper 条件删除/查询
+    @Serial
+    private static final long serialVersionUID = 1L;
     
-    /**
-     * 用户 ID
-     */
+    // 因为是中间表，通常没有单一主键，这里只做映射
+    // 如果 Mybatis-Plus 报错找不到主键，可以不加 @TableId，或者在数据库建一个自增 id
+    
+    @Schema(description = "用户 ID")
     private Long userId;
     
-    /**
-     * 角色 ID
-     */
+    @Schema(description = "角色 ID")
     private Long roleId;
 }

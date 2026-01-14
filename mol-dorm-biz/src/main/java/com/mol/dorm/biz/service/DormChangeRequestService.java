@@ -7,31 +7,37 @@ import com.mol.dorm.biz.entity.DormChangeRequest;
 public interface DormChangeRequestService extends IService<DormChangeRequest> {
     
     /**
-     * 提交调宿申请
+     * 提交普通换房申请 (Type=0)
      */
     void submitRequest(Long userId, Long targetRoomId, String reason);
     
     /**
-     * 通用审批入口 (新增)
-     * <p>自动根据当前申请单的状态，判断是执行辅导员审批还是宿管审批</p>
-     * * @param requestId 申请单ID
-     * @param pass      是否通过
-     * @param msg       审批意见
+     * 提交退宿/休学申请 (Type=1)
+     */
+    void submitLeaveRequest(Long userId, String reason);
+    
+    /**
+     * 提交互换申请 (Type=2)
+     */
+    void submitSwapRequest(Long userId, Long targetStudentId, String reason);
+    
+    /**
+     * 通用审批入口 (自动路由)
      */
     void approveRequest(Long requestId, Boolean pass, String msg);
     
     /**
-     * 辅导员审批 (内部或特定调用)
+     * 辅导员审批 (内部调用)
      */
     void auditByCounselor(Long requestId, Boolean pass, String msg);
     
     /**
-     * 宿管经理审批 (内部或特定调用)
+     * 宿管经理审批 (内部调用 - 终审并执行操作)
      */
     void auditByManager(Long requestId, Boolean pass, String msg);
     
     /**
-     * 分页查询
+     * 分页查询申请历史
      */
     Page<DormChangeRequest> getRequestList(Page<DormChangeRequest> page, Long userId, Integer status);
 }

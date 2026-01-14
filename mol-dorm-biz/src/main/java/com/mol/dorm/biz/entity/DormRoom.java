@@ -31,8 +31,13 @@ public class DormRoom extends BaseEntity implements Serializable {
     @Schema(description = "所属楼栋 ID")
     private Long buildingId;
     
-    @Schema(description = "所在楼层")
+    // --- 冗余字段，方便查询 ---
+    @Schema(description = "所在楼层号 (如: 3)")
     private Integer floorNo;
+    
+    // --- 核心外键，关联逻辑 ---
+    @Schema(description = "所属楼层记录 ID (关联 dorm_floor 表)")
+    private Long floorId;
     
     @Schema(description = "房间号 (如: 305)")
     @TableField("room_no")
@@ -50,6 +55,10 @@ public class DormRoom extends BaseEntity implements Serializable {
     
     @Schema(description = "状态: 1-正常, 0-维修")
     private Integer status;
+    
+    @Schema(description = "乐观锁版本号")
+    @Version
+    private Integer version;
     
     @Schema(description = "逻辑删除标志")
     @TableLogic(value = "0", delval = "1")

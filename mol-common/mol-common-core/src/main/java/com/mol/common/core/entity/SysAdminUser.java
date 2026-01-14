@@ -2,6 +2,7 @@ package com.mol.common.core.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
+import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -55,4 +56,8 @@ public class SysAdminUser extends BaseEntity {
      */
     @Schema(description = "帐号状态 (0:正常 1:停用)")
     private String status;
+    
+    @Schema(description = "逻辑删除标志")
+    @TableLogic
+    private String delFlag;
 }

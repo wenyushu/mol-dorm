@@ -1,8 +1,6 @@
 package com.mol.common.core.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
+import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -40,6 +38,10 @@ public class SysOrdinaryUser extends BaseEntity {
     
     @Schema(description = "真实姓名")
     private String realName;
+    
+    // [新增] 之前缺少的头像字段
+    @Schema(description = "头像地址")
+    private String avatar;
     
     @Schema(description = "身份证号")
     private String idCard;
@@ -120,4 +122,8 @@ public class SysOrdinaryUser extends BaseEntity {
      */
     @Schema(description = "帐号状态 (0:正常 1:停用)")
     private String status;
+    
+    @Schema(description = "逻辑删除标志")
+    @TableLogic
+    private String delFlag;
 }

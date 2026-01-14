@@ -38,6 +38,9 @@ public class SysCollege extends BaseEntity {
     @Schema(description = "显示排序 (越小越靠前)")
     private Integer sort;
     
+    @Schema(description = "学院简介/描述")
+    private String description;
+    
     @Schema(description = "删除标志 (0-正常, 1-删除)")
     private String delFlag;
 }
