@@ -1,89 +1,131 @@
 package com.mol.dorm.biz.entity;
 
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import com.baomidou.mybatisplus.annotation.TableName;
-import com.mol.common.core.entity.BaseEntity;
+import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
 
 import java.io.Serial;
 import java.io.Serializable;
+import java.time.LocalDateTime;
 
 /**
- * 宿舍楼实体类
+ * 宿舍楼栋实体类
  * <p>
- * 对应数据库表：dorm_building
- * 包含楼栋的基础信息、状态控制及物理属性
+ * 映射数据库表: dorm_building
+ * 该表统一管理全校所有住宿楼宇，通过 usageType 区分学生宿舍与教职工公寓。
+ * </p>
+ *
+ * @author mol
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
 @TableName("dorm_building")
-@Schema(description = "宿舍楼信息对象")
-public class DormBuilding extends BaseEntity implements Serializable {
+@Schema(description = "宿舍楼栋信息")
+public class DormBuilding implements Serializable {
     
     @Serial
     private static final long serialVersionUID = 1L;
     
-    @Schema(description = "楼栋主键 ID")
-    @TableId(type = IdType.AUTO)
+    /**
+     * 主键 ID
+     */
+    @Schema(description = "楼栋ID (主键)")
+    @TableId(value = "id", type = IdType.AUTO)
     private Long id;
     
+    /**
+     * 所属校区 ID
+     * 用于多校区物理隔离，分配时通过此字段筛选
+     */
     @Schema(description = "所属校区 ID")
     private Long campusId;
     
-    @Schema(description = "楼栋名称 (如: 北苑3号楼)")
-    private String name;
+    /**
+     * 楼栋名称
+     * 例如："海棠苑1号楼", "教工公寓A座"
+     */
+    @Schema(description = "楼栋名称")
+    private String buildingName;
     
     /**
-     * 楼宇类型
-     * 1-男生楼, 2-女生楼, 3-混合楼
-     * (对应前端下拉框选项)
+     * 楼栋编号/代码
+     * 例如："HT-01", "JG-A"
      */
-    @Schema(description = "楼宇类型: 1-男生楼, 2-女生楼, 3-混合楼")
-    private Integer type;
+    @Schema(description = "楼栋编号")
+    private String buildingNo;
     
     /**
-     * 楼层总数
-     * 用于“一键建楼”时的循环上限
+     * 总层数
+     * 用于前端楼层选择器展示
      */
-    @Schema(description = "总层数")
-    private Integer floors;
-    
-    @Schema(description = "是否有电梯 (true-有, false-无)")
-    private Boolean hasElevator;
+    @Schema(description = "楼层总数")
+    private Integer floorCount;
     
     /**
-     * 宿管负责人姓名
-     * (从 DTO 复制属性时需要此字段)
+     * 性别限制
+     * 0-混合 (通常用于特殊的高层次人才夫妻房，或整栋楼分层混住但房间独立)
+     * 1-男 (男寝/男教工宿舍)
+     * 2-女 (女寝/女教工宿舍)
      */
-    @Schema(description = "宿管负责人")
-    private String manager;
+    @Schema(description = "性别限制: 0-混合 1-男 2-女")
+    private Integer gender;
+    
+    /**
+     * 宿管负责人 ID
+     * 关联 sys_ordinary_user 表
+     */
+    @Schema(description = "宿管负责人 ID")
+    private Long managerId;
     
     /**
      * 地理位置
-     * (如: "北校区东侧", 从 DTO 复制属性时需要此字段)
+     * 存储经纬度或具体的文字描述
      */
     @Schema(description = "地理位置")
     private String location;
     
     /**
-     * 状态 (核心字段)
-     * 1-正常/启用, 0-停用/封禁
-     * <p>
-     * ⚠️ 修复报错: 无法解析 'getStatus' / 'setStatus'
-     * Service 中 updateBuilding 方法依赖此字段进行封楼校验
-     * </p>
+     * 用途分类 (核心业务字段)
+     * 0-学生宿舍 (Student Dorm) -> 走智能分配算法
+     * 1-教职工公寓 (Staff Apartment) -> 走申请审批流程
      */
-    @Schema(description = "状态: 1-启用, 0-封禁")
+    @Schema(description = "用途: 0-学生宿舍 1-教职工公寓")
+    private Integer usageType;
+    
+    /**
+     * 状态
+     * 1-启用 (正常分配)
+     * 0-停用 (装修中/封楼/废弃)
+     */
+    @Schema(description = "状态: 1-启用 0-停用")
     private Integer status;
     
     /**
-     * 逻辑删除标志
-     * 0-正常, 1-删除
-     * (MyBatis-Plus 全局配置通常已处理，显式写出可增强可读性)
+     * 备注信息
      */
-    @Schema(description = "逻辑删除标志")
+    @Schema(description = "备注")
+    private String remark;
+    
+    /**
+     * 逻辑删除标识
+     * MyBatis-Plus 自动处理：查询时自动带上 del_flag='0'
+     */
+    @TableLogic
+    @Schema(description = "逻辑删除: 0-正常 1-已删除")
     private String delFlag;
+    
+    /**
+     * 创建时间
+     * 自动填充
+     */
+    @Schema(description = "创建时间")
+    @TableField(fill = FieldFill.INSERT)
+    private LocalDateTime createTime;
+    
+    /**
+     * 更新时间
+     * 自动填充
+     */
+    @Schema(description = "更新时间")
+    @TableField(fill = FieldFill.INSERT_UPDATE)
+    private LocalDateTime updateTime;
 }

@@ -6,6 +6,7 @@ import cn.dev33.satoken.annotation.SaMode;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mol.common.core.constant.RoleConstants;
+import com.mol.common.core.util.LoginHelper;
 import com.mol.common.core.util.R;
 import com.mol.dorm.biz.entity.DormBed;
 import com.mol.dorm.biz.entity.RepairOrder;
@@ -23,13 +24,14 @@ import org.springframework.web.bind.annotation.*;
 public class RepairOrderController {
     
     private final RepairOrderService repairService;
-    private final DormBedService bedService; // 用于查找学生当前房间
+    private final DormBedService bedService;
     
     @Operation(summary = "学生提交报修")
     @SaCheckRole(RoleConstants.STUDENT)
     @PostMapping("/submit")
     public R<Void> submit(@RequestBody RepairOrder vo) {
-        Long userId = StpUtil.getLoginIdAsLong();
+        // ✅ 修复：使用 LoginHelper 获取当前学生 ID
+        Long userId = LoginHelper.getUserId();
         
         // 自动查找学生当前所在房间
         Long roomId = vo.getRoomId();
@@ -47,6 +49,7 @@ public class RepairOrderController {
     @SaCheckRole(value = {RoleConstants.DORM_MANAGER, RoleConstants.SUPER_ADMIN}, mode = SaMode.OR)
     @PostMapping("/assign")
     public R<Void> assign(@RequestParam Long orderId, @RequestParam Long repairmanId) {
+        // 管理员操作，无需获取 LoginId
         repairService.assign(orderId, repairmanId);
         return R.ok();
     }
@@ -63,6 +66,8 @@ public class RepairOrderController {
     @SaCheckRole(RoleConstants.STUDENT)
     @PostMapping("/rate")
     public R<Void> rate(@RequestBody RepairOrder vo) {
+        // 🛡️ 防刁民建议：Service层最好校验一下这个 orderId 是否属于当前用户
+        // 这里暂时只做 ID 获取的修复
         repairService.rate(vo.getId(), vo.getRating(), vo.getComment());
         return R.ok();
     }
@@ -76,9 +81,14 @@ public class RepairOrderController {
             RepairOrder query) {
         
         Page<RepairOrder> page = new Page<>(pageNum, pageSize);
-        // 获取当前用户角色，用于 Service 层做数据隔离
+        
+        // 获取当前用户角色
         String role = (String) StpUtil.getSession().get("role");
         
-        return R.ok(repairService.getPage(page, query, StpUtil.getLoginIdAsLong(), role));
+        // ✅ 修复：使用 LoginHelper
+        // Service 层会根据 role 判断：如果是 student，则强制加上 userId=currentUserId 的查询条件
+        Long currentUserId = LoginHelper.getUserId();
+        
+        return R.ok(repairService.getPage(page, query, currentUserId, role));
     }
 }

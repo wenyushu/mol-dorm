@@ -43,7 +43,7 @@
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <configuration>
-                    <mainClass>com.mol.MolLauncher</mainClass>
+                    <mainClass>com.mol.launcher.MolLauncherApplication</mainClass>
                 </configuration>
             </plugin>
         </plugins>

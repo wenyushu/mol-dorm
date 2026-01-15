@@ -39,6 +39,12 @@ public class DormRoom extends BaseEntity implements Serializable {
     @Schema(description = "所属楼层记录 ID (关联 dorm_floor 表)")
     private Long floorId;
     
+    /**
+     * 公寓户型
+     */
+    @Schema(description = "户型: 单间/一室一厅/两室一厅 (仅教工宿舍有效)")
+    private String apartmentType;
+    
     @Schema(description = "房间号 (如: 305)")
     @TableField("room_no")
     private String roomNo;

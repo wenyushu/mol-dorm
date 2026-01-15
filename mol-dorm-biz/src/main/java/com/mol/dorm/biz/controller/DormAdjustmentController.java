@@ -1,43 +1,61 @@
 package com.mol.dorm.biz.controller;
 
 import cn.dev33.satoken.annotation.SaCheckRole;
-import cn.dev33.satoken.annotation.SaMode;
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mol.common.core.constant.RoleConstants;
+import com.mol.common.core.util.LoginHelper;
 import com.mol.common.core.util.R;
-import com.mol.dorm.biz.service.ManualAdjustmentService;
+import com.mol.dorm.biz.entity.DormChangeRequest;
+import com.mol.dorm.biz.service.DormAdjustmentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-@Tag(name = "人工调宿管理 (Admin)")
+/**
+ * 调宿申请控制器 (学生端)
+ */
+@Tag(name = "调宿管理-学生", description = "学生提交调宿或互换申请")
 @RestController
 @RequestMapping("/adjustment")
 @RequiredArgsConstructor
-@SaCheckRole(value = {RoleConstants.SUPER_ADMIN, RoleConstants.DORM_MANAGER}, mode = SaMode.OR)
 public class DormAdjustmentController {
     
-    private final ManualAdjustmentService adjustmentService;
+    private final DormAdjustmentService adjustmentService;
     
-    @Operation(summary = "双人互换床位", description = "强制互换，无视满员状态")
-    @PostMapping("/swap")
-    public R<Void> swap(@RequestParam Long studentIdA, @RequestParam Long studentIdB) {
-        adjustmentService.swapBeds(studentIdA, studentIdB);
-        return R.ok();
+    @Operation(summary = "提交调宿申请")
+    @SaCheckRole(RoleConstants.STUDENT) // 🔒 仅学生可用
+    @PostMapping("/apply")
+    public R<Boolean> apply(@RequestBody DormChangeRequest request) {
+        Long currentUserId = LoginHelper.getUserId();
+        
+        // 自动注入当前用户ID，防止代填
+        return R.ok(adjustmentService.applyForAdjustment(
+                currentUserId,
+                request.getReason(),
+                request.getTargetRoomId(),
+                request.getSwapStudentId()
+        ));
     }
     
-    @Operation(summary = "强制搬迁/分配", description = "将学生移动到指定空床位，若 bedId 为空则视为强制退宿")
-    @PostMapping("/move")
-    public R<Void> move(@RequestParam Long studentId, @RequestParam(required = false) Long targetBedId) {
-        adjustmentService.moveUserToBed(studentId, targetBedId);
-        return R.ok();
-    }
-    
-    @Operation(summary = "批量毕业生离校", description = "危险操作！清空指定年份入学学生的所有床位")
-    @SaCheckRole(RoleConstants.SUPER_ADMIN)
-    @PostMapping("/graduate")
-    public R<Void> batchGraduate(@RequestParam Integer year) {
-        adjustmentService.batchGraduate(year);
-        return R.ok();
+    // 补充 @GetMapping("/history") 查看我的申请记录
+    @Operation(summary = "查看我的申请记录")
+    @SaCheckRole(RoleConstants.STUDENT)
+    @GetMapping("/history")
+    public R<IPage<DormChangeRequest>> history(
+            @RequestParam(defaultValue = "1") Integer pageNum,
+            @RequestParam(defaultValue = "10") Integer pageSize) {
+        
+        Long currentUserId = LoginHelper.getUserId();
+        
+        // 强制只查自己的数据
+        Page<DormChangeRequest> page = new Page<>(pageNum, pageSize);
+        IPage<DormChangeRequest> result = adjustmentService.lambdaQuery()
+                .eq(DormChangeRequest::getUserId, currentUserId)
+                .orderByDesc(DormChangeRequest::getCreateTime)
+                .page(page);
+        
+        return R.ok(result);
     }
 }

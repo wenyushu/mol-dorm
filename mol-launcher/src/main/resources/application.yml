@@ -5,16 +5,14 @@ spring:
   application:
     name: mol-launcher
 
-  # 【核心】利用 import 把子模块的配置全部“吸”过来
-  # 这样 Launcher 启动时，就拥有了数据库连接、MyBatis 配置等所有信息
+  # 【核心】导入配置
   config:
     import:
       - optional:classpath:/common-base.yml
-      - optional:classpath:/application-server.yml    # 系统模块配置
-      - optional:classpath:/application-dorm.yml      # 宿舍业务模块配置
+      - optional:classpath:/application-server.yml
+      - optional:classpath:/application-dorm.yml
 
   main:
-    # 允许 Bean 定义覆盖 (多模块可能有重名的 Bean)
     allow-bean-definition-overriding: true
     banner-mode: console
 
@@ -25,13 +23,33 @@ spring:
     ansi:
       enabled: always
 
-logging:
-  level:
-    root: INFO
-    com.mol: INFO
-    com.mol.**.mapper: DEBUG
+# -------------------------------------------------------------------
+# 解决 MyBatis-Plus 路径被覆盖的问题
+# 必须在聚合层显式指定扫描所有模块的路径
+# -------------------------------------------------------------------
+mybatis-plus:
+  # 使用通配符 ** 同时匹配 server 和 dorm 目录，或者逗号分隔
+  mapper-locations: classpath*:/mapper/**/*.xml
+  # 逗号分隔多个包路径
+  type-aliases-package: com.mol.server.entity, com.mol.dorm.biz.entity
 
-# 端口配置已由 Java 代码 System.setProperty 接管 (9090)，这里写不写都行，为了直观保留
+# -------------------------------------------------------------------
+# 解决 Swagger 分组被覆盖的问题 (如果需要同时看两个文档)
+# -------------------------------------------------------------------
+springdoc:
+  group-configs:
+    - group: 'sys'
+      paths-to-match: '/**'
+      packages-to-scan: com.mol.server.controller
+    - group: 'dorm'
+      paths-to-match: '/**'
+      packages-to-scan: com.mol.dorm.biz.controller
+
+# -------------------------------------------------------------------
+# 【注意】Context Path 最终由 Launcher 决定
+# 现在的实际访问路径是: http://localhost:9090/api/xxx
+# 请确保前端请求地址已适配此变更
+# -------------------------------------------------------------------
 server:
   port: 9090
   servlet:

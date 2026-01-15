@@ -8,7 +8,7 @@ import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mol.common.core.constant.RoleConstants;
 import com.mol.common.core.entity.SysOrdinaryUser;
-import com.mol.common.core.exception.ServiceException;
+import com.mol.common.core.util.LoginHelper;
 import com.mol.common.core.util.R;
 import com.mol.server.service.SysOrdinaryUserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,13 +19,6 @@ import org.springframework.web.bind.annotation.*;
 
 /**
  * 普通用户管理控制器 (学生/教工)
- * <p>
- * 提供针对学生和教职工账户的 CRUD 及密码管理接口
- * <p>
- * 🔒 权限控制策略：
- * 1. 增删改、强制重置密码 -> 仅超级管理员 (Super Admin)
- * 2. 查询列表 -> 管理组 (超管 + 宿管 + 辅导员)，防止普通学生查询全校名单
- * 3. 修改个人密码 -> 登录用户本人
  *
  * @author mol
  */
@@ -42,7 +35,6 @@ public class SysOrdinaryUserController {
      */
     @Operation(summary = "分页查询用户", description = "支持按姓名模糊查询，或按身份(学生/教工)筛选")
     // 🔒 权限锁：只有管理组（超管、宿管、辅导员）能查询列表
-    // mode = SaMode.OR 表示只要具备其中任意一个角色即可通过
     @SaCheckRole(value = {
             RoleConstants.SUPER_ADMIN,
             RoleConstants.DORM_MANAGER,
@@ -52,11 +44,10 @@ public class SysOrdinaryUserController {
     public R<IPage<SysOrdinaryUser>> page(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
             @Parameter(description = "每页大小") @RequestParam(defaultValue = "10") Integer pageSize,
-            @Parameter(description = "真实姓名 (模糊查询)") @RequestParam(required = false) String realName,
-            @Parameter(description = "学号/工号 (精确查询)") @RequestParam(required = false) String username,
+            @Parameter(description = "真实姓名") @RequestParam(required = false) String realName,
+            @Parameter(description = "学号/工号") @RequestParam(required = false) String username,
             @Parameter(description = "身份分类: 0-学生, 1-职工") @RequestParam(required = false) Integer userCategory) {
         
-        // 构造查询条件
         IPage<SysOrdinaryUser> result = ordinaryUserService.lambdaQuery()
                 .like(realName != null, SysOrdinaryUser::getRealName, realName)
                 .eq(username != null, SysOrdinaryUser::getUsername, username)
@@ -64,30 +55,27 @@ public class SysOrdinaryUserController {
                 .orderByDesc(SysOrdinaryUser::getCreateTime)
                 .page(new Page<>(pageNum, pageSize));
         
-        // 脱敏处理：密码不回显
+        // 🛡️ 脱敏处理：密码不回显
         result.getRecords().forEach(u -> u.setPassword(null));
         
         return R.ok(result);
     }
     
-    @Operation(summary = "新增用户 (仅 Admin)", description = "如果未填密码，默认为 123456")
-    // 🔒 权限锁：只有超级管理员能录入档案
+    @Operation(summary = "新增用户 (仅 Admin)")
     @SaCheckRole(RoleConstants.SUPER_ADMIN)
     @PostMapping
     public R<Boolean> save(@RequestBody SysOrdinaryUser user) {
         return R.ok(ordinaryUserService.saveUser(user));
     }
     
-    @Operation(summary = "修改用户信息 (仅 Admin)", description = "仅修改基本信息，不包含密码")
-    // 🔒 权限锁：只有超级管理员能修改档案
+    @Operation(summary = "修改用户信息 (仅 Admin)")
     @SaCheckRole(RoleConstants.SUPER_ADMIN)
     @PutMapping
     public R<Boolean> update(@RequestBody SysOrdinaryUser user) {
         return R.ok(ordinaryUserService.updateUser(user));
     }
     
-    @Operation(summary = "删除用户 (仅 Admin)", description = "物理删除用户数据")
-    // 🔒 权限锁：只有超级管理员能删除档案
+    @Operation(summary = "删除用户 (仅 Admin)")
     @SaCheckRole(RoleConstants.SUPER_ADMIN)
     @DeleteMapping("/{id}")
     public R<Boolean> remove(@PathVariable Long id) {
@@ -96,34 +84,41 @@ public class SysOrdinaryUserController {
     
     // ------------------- 密码管理接口 -------------------
     
-    @Operation(summary = "管理员重置密码", description = "管理员强制重置用户密码，无需旧密码")
-    // 🔒 权限锁：只有超级管理员能执行 “暴力重置”
+    @Operation(summary = "管理员重置密码", description = "管理员强制重置用户密码")
     @SaCheckRole(RoleConstants.SUPER_ADMIN)
     @PostMapping("/reset-pwd")
     public R<Void> resetPwd(
-            @Parameter(description = "用户 ID", required = true) @RequestParam Long userId,
-            @Parameter(description = "新密码", required = true) @RequestParam String newPassword) {
+            @Parameter(description = "用户 ID") @RequestParam Long userId,
+            @Parameter(description = "新密码") @RequestParam String newPassword) {
         
+        // 1. 执行重置逻辑
         ordinaryUserService.resetPassword(userId, newPassword);
-        return R.ok(null, "密码重置成功");
+        
+        // 2. 【新增】强制注销该用户，让旧密码生成的 Token 立即失效
+        // 注意：这里需要传入 userId，指定踢出某人
+        StpUtil.logout(userId);
+        
+        return R.ok(null, "密码重置成功，该用户已被强制下线");
     }
     
-    @Operation(summary = "修改个人密码", description = "用户自行修改密码，需验证旧密码")
-    // 🔒 权限锁：必须是已登录用户
+    @Operation(summary = "修改个人密码", description = "用户自行修改密码")
     @SaCheckLogin
     @PostMapping("/update-pwd")
     public R<Void> updatePwd(
-            @Parameter(description = "用户 ID", required = true) @RequestParam Long userId,
-            @Parameter(description = "旧密码", required = true) @RequestParam String oldPassword,
-            @Parameter(description = "新密码", required = true) @RequestParam String newPassword) {
+            // 🛡️ 防刁民设计：移除 userId 参数！
+            // 不要相信前端传来的 userId，只使用 Token 解析出来的 ID
+            @Parameter(description = "旧密码") @RequestParam String oldPassword,
+            @Parameter(description = "新密码") @RequestParam String newPassword) {
         
-        // 🛡️ 安全防线：防止有人带了 Token 却去改别人的密码
-        long currentLoginId = StpUtil.getLoginIdAsLong();
-        if (currentLoginId != userId) {
-            throw new ServiceException("非法操作：您无权修改他人的密码！");
-        }
+        // ✅ 使用 LoginHelper 获取当前登录人真实 ID (自动处理前缀)
+        Long currentUserId = LoginHelper.getUserId();
         
-        ordinaryUserService.updatePassword(userId, oldPassword, newPassword);
-        return R.ok(null, "密码修改成功，请重新登录");
+        // 1. 执行修改逻辑
+        ordinaryUserService.updatePassword(currentUserId, oldPassword, newPassword);
+        
+        // 2. 【新增】强制注销当前登录状态
+        StpUtil.logout();
+        
+        return R.ok(null, "密码修改成功，请使用新密码重新登录");
     }
 }

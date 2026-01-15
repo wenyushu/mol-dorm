@@ -72,6 +72,9 @@ public class SysOrdinaryUser extends BaseEntity {
     @Schema(description = "所属班级 ID (仅学生)")
     private Long classId;
     
+    @Schema(description = "部门ID (教职工用)")
+    private Long deptId;
+    
     // ----------- 详细档案信息 -----------
     
     @Schema(description = "民族 (如: 汉族)")
@@ -126,4 +129,26 @@ public class SysOrdinaryUser extends BaseEntity {
     @Schema(description = "逻辑删除标志")
     @TableLogic
     private String delFlag;
+    
+    /**
+     * 入学/入职年份 (YYYY)
+     * 用于生成学号前缀，不存入 sys_ordinary_user 表 (存入 stu_profile)
+     */
+    @TableField(exist = false)
+    @Schema(description = "入学/入职年份 (前端传参用)")
+    private Integer entryYear;
+    
+    /**
+     * 为了兼容性，增加 getEnrollmentYear 方法别名
+     */
+    public Integer getEnrollmentYear() {
+        return this.entryYear;
+    }
+    
+    /**
+     * 培养层次代码 (Z/B/Y/D)
+     * 业务过程变量，不存库
+     */
+    @TableField(exist = false)
+    private String eduLevel;
 }

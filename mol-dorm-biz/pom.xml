@@ -27,7 +27,7 @@
         <dependency>
             <groupId>com.mol</groupId>
             <artifactId>mol-server</artifactId>
-            <version>1.0.0</version>
+            <version>${project.version}</version>
         </dependency>
 
         <dependency>

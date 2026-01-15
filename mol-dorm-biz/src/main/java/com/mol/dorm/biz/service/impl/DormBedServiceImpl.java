@@ -53,7 +53,7 @@ public class DormBedServiceImpl extends ServiceImpl<DormBedMapper, DormBed> impl
         }
         
         // [核心防御] 检查该学生是否已经在别的床上躺着了
-        // 防止出现“同一个ID占两个坑”的数据腐坏情况
+        // 防止出现 “同一个ID占两个坑” 的数据腐坏情况
         Long count = this.baseMapper.selectCount(Wrappers.<DormBed>lambdaQuery()
                 .eq(DormBed::getOccupantId, userId));
         if (count > 0) {

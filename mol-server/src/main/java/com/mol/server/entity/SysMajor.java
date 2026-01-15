@@ -37,6 +37,16 @@ public class SysMajor extends BaseEntity {
     @Schema(description = "专业简称/代码")
     private String shortName;
     
+    /**
+     * 培养层次
+     * 例如: "本科", "专科", "研究生"
+     */
+    @Schema(description = "培养层次")
+    private String level;
+    
+    @Schema(description = "学制 (年)")
+    private Integer duration;
+    
     @Schema(description = "排序优先级 (越小越靠前)")
     private Integer sort;
 }

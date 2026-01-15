@@ -198,4 +198,28 @@ public class UserPreference extends BaseEntity {
     
     @Schema(description = "特殊疾病描述")
     private String specialDisease;
+    
+    // ==========================================
+    // 8. 游戏详细数据 (Game Details)
+    // ==========================================
+    @Schema(description = "游戏段位: 0-黑铁/青铜, 1-白银/黄金, 2-铂金/钻石, 3-大师/王者")
+    private Integer gameRank;
+    
+    @Schema(description = "MOBA 位置: 0-全能, 1-上单, 2-打野, 3-中单, 4-射手, 5-辅助")
+    private Integer gameRole;
+    
+    // ==========================================
+    // 9. 饮食偏好 (Dietary & Smell)
+    // ==========================================
+    @Schema(description = "吃螺蛳粉: 0-拒绝/闻不了, 1-偶尔吃, 2-重度爱好者")
+    private Integer eatLuosifen;
+    
+    @Schema(description = "吃榴莲: 0-拒绝/闻不了, 1-吃")
+    private Integer eatDurian;
+    
+    // ==========================================
+    // 10. 籍贯/民族 (通常在User表，若为了方便计算可冗余在此)
+    // ==========================================
+    @Schema(description = "南北方: 0-南方, 1-北方 (根据籍贯自动计算)")
+    private Integer regionType;
 }

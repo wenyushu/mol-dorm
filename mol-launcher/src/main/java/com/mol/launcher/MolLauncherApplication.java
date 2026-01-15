@@ -20,7 +20,7 @@ import java.net.UnknownHostException;
  * 3. 结果：Sys 和 Dorm 的 Bean 都在同一个容器里，可以互相 @Autowired。
  * </p>
  */
-@SpringBootApplication
+@SpringBootApplication(scanBasePackages = "com.mol")
 @ComponentScan(
         basePackages = "com.mol",
         // ⚠️ 关键：排除掉子模块的独立启动类，防止它们干扰聚合启动

@@ -9,7 +9,7 @@ public interface DormFixedAssetService extends IService<DormFixedAsset> {
     /**
      * 分页查询资产列表
      * @param page 分页对象
-     * @param roomId 房间ID (可选)
+     * @param roomId 房间 ID (可选)
      * @param assetName 资产名称 (可选)
      * @param category 分类 (可选)
      */
