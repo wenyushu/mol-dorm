@@ -38,7 +38,7 @@ public class UsernameGenerator {
      *
      * @param year      入学年份 (如 2026)
      * @param eduLevel  培养层次 (Z/B/ZB/Y/D)
-     * @param collegeId 学院ID (如 1, 2, 5)
+     * @param collegeId 学院 ID (如 1, 2, 5)
      * @return 11位+ 的唯一学号
      */
     public String generateStudentAccount(Integer year, String eduLevel, Long collegeId) {

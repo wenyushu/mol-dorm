@@ -15,13 +15,14 @@ import java.util.Collections;
 import java.util.List;
 
 /**
- * Sa-Token 自定义权限加载接口实现类
+ * Sa-Token 权限加载实现类 (兼职辅导员适配版)
  * <p>
- * 核心职能：用户登录后，计算该用户拥有哪些【角色】和【权限】。
- * 包含“防刁民”设计：物理隔离管理员与普通用户，防止越权。
+ * 核心逻辑：
+ * 1. 管理员：物理隔离，仅查 sys_user_role
+ * 2. 普通用户：
+ * - 基础身份：根据 user_category 自动赋予 (学生/教工)
+ * - 兼职身份：允许通过 sys_user_role 表给学生叠加 "college_teacher" 等管理角色
  * </p>
- *
- * @author mol
  */
 @Slf4j
 @Component
@@ -31,50 +32,26 @@ public class StpInterfaceImpl implements StpInterface {
     private final SysUserRoleMapper userRoleMapper;
     private final SysOrdinaryUserMapper ordinaryUserMapper;
     
-    // 必须与 AuthServiceImpl 中的前缀严格一致 (0:管理员, 1:普通用户)
     private static final int TYPE_ADMIN = 0;
     private static final int TYPE_ORDINARY = 1;
     
-    /**
-     * 获取权限列表 (Permissions)
-     */
     @Override
     public List<String> getPermissionList(Object loginId, String loginType) {
         List<String> permissions = new ArrayList<>();
-        
-        // 1. 先获取角色
         List<String> roleList = getRoleList(loginId, loginType);
-        
-        // 2. 【特权兜底】如果是超级管理员，赋予 "*" (所有权限)
-        // 防刁民：只有持有 super_admin 角色的账号才能触发，普通学生无法触达
         if (roleList.contains(RoleConstants.SUPER_ADMIN)) {
             permissions.add("*");
         }
-        
         return permissions;
     }
     
-    /**
-     * 获取角色列表 (Roles)
-     * 🛡️ 核心防守区域
-     */
     @Override
     public List<String> getRoleList(Object loginId, String loginType) {
         String loginIdStr = (String) loginId;
+        if (StrUtil.isBlank(loginIdStr) || !loginIdStr.contains(":")) return Collections.emptyList();
         
-        // -----------------------------------------------------------
-        // 🛡️ 防守层1：格式熔断
-        // 如果 ID 为空或格式不对 (没有冒号)，直接返回空，防止恶意攻击导致空指针或解析报错
-        // -----------------------------------------------------------
-        if (StrUtil.isBlank(loginIdStr) || !loginIdStr.contains(":")) {
-            return Collections.emptyList();
-        }
-        
-        // 解析 ID 结构 "Type:Id"
         String[] parts = loginIdStr.split(":");
-        if (parts.length != 2) {
-            return Collections.emptyList();
-        }
+        if (parts.length != 2) return Collections.emptyList();
         
         int userType;
         long userId;
@@ -82,51 +59,51 @@ public class StpInterfaceImpl implements StpInterface {
             userType = Integer.parseInt(parts[0]);
             userId = Long.parseLong(parts[1]);
         } catch (NumberFormatException e) {
-            // 🛡️ 防守层2：异常静默
-            // 如果有人恶意传字母进来，捕获异常并返回空，不给前端抛 500
-            log.warn("Sa-Token 鉴权格式异常，疑似恶意请求: {}", loginIdStr);
             return Collections.emptyList();
         }
         
         List<String> roles = new ArrayList<>();
         
         // -----------------------------------------------------------
-        // 🛡️ 防守层3：身份物理隔离
-        // 管理员走管理员的门，学生走学生的门。学生绝对进不了管理员的逻辑。
+        // 场景 A: 系统管理员 (后台人员)
         // -----------------------------------------------------------
-        
         if (userType == TYPE_ADMIN) {
-            // ================== 管理员逻辑 ==================
-            
-            // 1. 超管特权 (ID=1 永远是超管，防数据库被删)
             if (userId == 1L) {
                 roles.add(RoleConstants.SUPER_ADMIN);
                 return roles;
             }
-            
-            // 2. 普通管理员：查 sys_user_role 表
+            // 纯管理人员，角色完全来自数据库配置
             List<String> dbRoles = userRoleMapper.selectRoleKeysByUserId(userId);
-            if (dbRoles != null && !dbRoles.isEmpty()) {
-                roles.addAll(dbRoles);
+            if (dbRoles != null) roles.addAll(dbRoles);
+        }
+        
+        // -----------------------------------------------------------
+        // 场景 B: 普通用户 (学生/兼职辅导员/教工)
+        // -----------------------------------------------------------
+        else if (userType == TYPE_ORDINARY) {
+            SysOrdinaryUser user = ordinaryUserMapper.selectById(userId);
+            
+            // 1. 账号状态检查 (防离职/毕业后未注销)
+            if (user == null || "1".equals(user.getStatus())) {
+                return Collections.emptyList();
             }
             
-        } else if (userType == TYPE_ORDINARY) {
-            // ================== 普通用户逻辑 ==================
+            // 2. 【基础身份】(Base Role)
+            // 这是写死在代码里的，由账号属性决定，不可剥夺
+            if (user.getUserCategory() == 0) {
+                roles.add(RoleConstants.STUDENT); // 基础：学生
+            } else if (user.getUserCategory() == 1) {
+                roles.add(RoleConstants.COLLEGE_TEACHER); // 基础：教工
+            }
             
-            // 🛡️ 防内鬼设计：
-            // 普通用户的角色完全由代码逻辑决定，【不查】sys_user_role 表。
-            // 即使数据库里有人恶意给学生插了一条 "admin" 的角色关联，这里也不会生效。
-            
-            SysOrdinaryUser user = ordinaryUserMapper.selectById(userId);
-            if (user != null && user.getUserCategory() != null) {
-                // 0-学生
-                if (user.getUserCategory() == 0) {
-                    roles.add(RoleConstants.STUDENT);
-                }
-                // 1-教职工/辅导员
-                else if (user.getUserCategory() == 1) {
-                    roles.add("teacher"); // 需确保常量一致
-                }
+            // 3. 【兼职/叠加身份】(Extra Role)
+            // 允许管理员在 sys_user_role 表中给这个学生 ID 绑定额外的角色
+            // 例如：给李小牧 (Student) 绑定 "college_teacher" 或 "counselor" 角色
+            List<String> extraRoles = userRoleMapper.selectRoleKeysByUserId(userId);
+            if (extraRoles != null && !extraRoles.isEmpty()) {
+                // 这里不需要过滤，直接叠加。
+                // 结果示例：["student", "college_teacher"]
+                roles.addAll(extraRoles);
             }
         }
         

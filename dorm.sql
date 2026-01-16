@@ -25,8 +25,8 @@ CREATE TABLE `biz_class` (
   `major_id` bigint NOT NULL COMMENT '所属专业ID',
   `grade` int DEFAULT NULL COMMENT '年级 (如: 2024)',
   `class_name` varchar(100) NOT NULL COMMENT '班级名称',
-  `counselor_id` bigint DEFAULT NULL COMMENT '辅导员ID',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除: 0-未删 1-已删',
+  `counselor_id` bigint DEFAULT NULL COMMENT '辅导员ID(关联sys_ordinary_user)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
@@ -35,38 +35,47 @@ CREATE TABLE `biz_class` (
   PRIMARY KEY (`id`),
   KEY `fk_class_major` (`major_id`),
   CONSTRAINT `fk_class_major` FOREIGN KEY (`major_id`) REFERENCES `sys_major` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='基础信息-班级表';
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='基础-班级表';
 
 /*Data for the table `biz_class` */
 
 insert  into `biz_class`(`id`,`major_id`,`grade`,`class_name`,`counselor_id`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(1,1,2024,'英语2401班',NULL,'0','admin','2026-01-15 12:22:12','',NULL,NULL),
-(2,1,2024,'英语2402班',NULL,'0','admin','2026-01-15 12:22:12','',NULL,NULL),
-(3,2,2025,'视传2501班',NULL,'0','admin','2026-01-15 12:22:12','',NULL,NULL),
-(4,4,2023,'机械2301班',NULL,'0','admin','2026-01-15 12:22:12','',NULL,NULL),
-(5,5,2024,'化工研2401班',NULL,'0','admin','2026-01-15 12:22:12','',NULL,NULL);
+(1,1,2024,'软工2401',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,1,2024,'软工2402',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,2,2023,'AI研2301',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,3,2025,'英语2501',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,3,2025,'英语2502',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,4,2024,'机械2401',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,4,2024,'机械2402',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,5,2024,'土木2401',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,1,2022,'软工2201(毕业班)',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(10,1,2026,'软工2601(新生)',NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `biz_electric_violation_log` */
 
 DROP TABLE IF EXISTS `biz_electric_violation_log`;
 
 CREATE TABLE `biz_electric_violation_log` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键',
   `room_id` bigint NOT NULL COMMENT '房间ID',
-  `violation_type` int NOT NULL COMMENT '违规类型: 1-功率超载 2-恶性负载(阻性) 3-夜间不归',
-  `power_val` decimal(10,2) DEFAULT NULL COMMENT '违规时的功率(W)',
+  `violation_type` int NOT NULL COMMENT '类型: 1-功率超载 2-恶性负载',
+  `power_val` decimal(10,2) DEFAULT NULL COMMENT '当时功率(W)',
   `detected_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '检测时间',
-  `create_by` varchar(64) DEFAULT 'system' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `remark` varchar(500) DEFAULT NULL COMMENT '处理结果备注',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'system',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `fk_violation_room` (`room_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='违规用电/安全警报日志';
+  KEY `idx_room` (`room_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='物联-违规用电日志';
 
 /*Data for the table `biz_electric_violation_log` */
+
+insert  into `biz_electric_violation_log`(`id`,`room_id`,`violation_type`,`power_val`,`detected_time`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,19,2,2500.00,'2026-01-15 18:43:32','0','system','2026-01-15 18:43:32','',NULL,'使用热得快'),
+(2,1,1,1200.00,'2026-01-15 18:43:32','0','system','2026-01-15 18:43:32','',NULL,'吹风机功率过大');
 
 /*Table structure for table `biz_holiday_stay` */
 
@@ -83,12 +92,12 @@ CREATE TABLE `biz_holiday_stay` (
   `emergency_phone` varchar(20) NOT NULL COMMENT '联系电话',
   `status` int DEFAULT '0' COMMENT '状态: 0-待审批 1-通过 2-驳回',
   `audit_msg` varchar(255) DEFAULT NULL COMMENT '审批意见',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-假期留校表';
 
@@ -122,174 +131,192 @@ DROP TABLE IF EXISTS `biz_repair_order`;
 
 CREATE TABLE `biz_repair_order` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `order_no` varchar(32) NOT NULL COMMENT '工单号',
+  `order_no` varchar(32) NOT NULL COMMENT '工单号(唯一)',
   `room_id` bigint NOT NULL COMMENT '房间ID',
   `applicant_id` bigint NOT NULL COMMENT '申请人ID',
   `description` text NOT NULL COMMENT '故障描述',
+  `images` varchar(1000) DEFAULT NULL COMMENT '图片URL(逗号分隔)',
   `status` int DEFAULT '0' COMMENT '状态: 0-待处理 1-维修中 2-已完成',
-  `images` varchar(1000) DEFAULT NULL COMMENT '图片URL',
   `repairman_id` bigint DEFAULT NULL COMMENT '维修工ID',
   `finish_time` datetime DEFAULT NULL COMMENT '完成时间',
-  `rating` tinyint DEFAULT NULL COMMENT '评分',
+  `rating` tinyint DEFAULT NULL COMMENT '评分(1-5)',
   `comment` varchar(255) DEFAULT NULL COMMENT '评价内容',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-报修工单表';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-报修工单表';
 
 /*Data for the table `biz_repair_order` */
+
+insert  into `biz_repair_order`(`id`,`order_no`,`room_id`,`applicant_id`,`description`,`images`,`status`,`repairman_id`,`finish_time`,`rating`,`comment`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'REP20240101001',1,1,'空调漏水',NULL,0,NULL,NULL,NULL,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,'REP20240101002',19,5,'门锁坏了',NULL,1,NULL,NULL,NULL,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'REP20240101003',37,8,'马桶堵了',NULL,2,NULL,NULL,NULL,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `biz_staff_profile` */
 
 DROP TABLE IF EXISTS `biz_staff_profile`;
 
 CREATE TABLE `biz_staff_profile` (
-  `user_id` bigint NOT NULL COMMENT '用户ID (主键, 关联 sys_ordinary_user.id)',
-  `dept_id` bigint NOT NULL COMMENT '所属部门/学院ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID (关联 sys_ordinary_user.id)',
+  `dept_id` bigint NOT NULL COMMENT '所属部门ID(冗余)',
   `job_title` varchar(50) NOT NULL COMMENT '职称/职务',
   `contract_type` varchar(20) DEFAULT '长期' COMMENT '合同类型',
-  `housing_intent` tinyint DEFAULT '0' COMMENT '是否有住宿意向 (0:无 1:有)',
-  `current_bed_id` bigint DEFAULT NULL COMMENT '当前床位ID (冗余字段)',
+  `housing_intent` tinyint DEFAULT '0' COMMENT '是否有住宿意向: 0-无 1-有',
+  `current_bed_id` bigint DEFAULT NULL COMMENT '当前床位ID (冗余)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='教职工档案扩展表';
 
 /*Data for the table `biz_staff_profile` */
 
-insert  into `biz_staff_profile`(`user_id`,`dept_id`,`job_title`,`contract_type`,`housing_intent`,`current_bed_id`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(10005,1,'讲师','长期',1,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(10006,1,'讲师','长期',1,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(10007,1,'讲师','长期',1,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(10008,1,'讲师','长期',1,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(10009,1,'讲师','长期',1,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(80001,2,'教授','长期',1,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(80002,2,'讲师','长期',0,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(80003,1,'科员','固定期限',0,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(80004,4,'技工','劳务派遣',1,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(80005,5,'队长','长期',0,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL);
+insert  into `biz_staff_profile`(`user_id`,`dept_id`,`job_title`,`contract_type`,`housing_intent`,`current_bed_id`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(10,1,'讲师','长期',1,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `biz_user_preference` */
 
 DROP TABLE IF EXISTS `biz_user_preference`;
 
 CREATE TABLE `biz_user_preference` (
-  `user_id` bigint NOT NULL COMMENT '用户ID (关联 sys_ordinary_user.id)',
-  `team_code` varchar(32) DEFAULT NULL COMMENT '组队码 (有相同码的学生强制分在一起)',
-  `bed_time` tinyint DEFAULT '3' COMMENT '就寝时间: 1-21点, 2-22点, 3-23点, 4-24点, 5-1点, 6-2点+',
-  `wake_time` tinyint DEFAULT '3' COMMENT '起床时间: 1-6点, 2-7点, 3-8点, 4-9点, 5-10点, 6-11点+',
-  `siesta_habit` tinyint DEFAULT '0' COMMENT '午睡习惯: 0-无, 1-偶尔, 2-必须午睡(需安静)',
-  `out_late_freq` tinyint DEFAULT '0' COMMENT '晚归频率: 0-从不, 1-偶尔, 2-经常',
-  `sleep_quality` tinyint DEFAULT '2' COMMENT '睡眠深浅: 1-雷打不动, 2-普通, 3-轻度敏感, 4-神经衰弱',
-  `snoring_level` tinyint DEFAULT '0' COMMENT '打呼噜: 0-无, 1-轻微, 2-中度, 3-雷震子',
-  `grinding_teeth` tinyint DEFAULT '0' COMMENT '磨牙: 0-无, 1-有',
-  `sleep_talk` tinyint DEFAULT '0' COMMENT '说梦话: 0-无, 1-有',
-  `climb_bed_noise` tinyint DEFAULT '0' COMMENT '上下床动静: 0-轻盈, 1-普通, 2-拆迁队',
-  `shower_freq` tinyint DEFAULT '1' COMMENT '洗澡频率: 1-每天, 2-两天一次, 3-不定期',
-  `sock_wash` tinyint DEFAULT '0' COMMENT '袜子清洗: 0-当天洗, 1-攒一堆洗',
-  `trash_habit` tinyint DEFAULT '1' COMMENT '倒垃圾: 1-满了就倒, 2-轮流倒, 3-谁看不下去谁倒',
-  `clean_freq` tinyint DEFAULT '2' COMMENT '打扫频率: 1-每天, 2-每周, 3-每月, 4-随缘',
-  `toilet_clean` tinyint DEFAULT '1' COMMENT '轮流刷厕所: 1-完全接受, 0-拒绝',
-  `desk_messy` tinyint DEFAULT '2' COMMENT '桌面整洁度: 1-极简, 2-乱中有序, 3-垃圾堆',
-  `personal_hygiene` tinyint DEFAULT '3' COMMENT '个人卫生自评: 1-5分',
-  `odor_tolerance` tinyint DEFAULT '2' COMMENT '异味容忍度: 1-无法忍受, 2-普通, 3-强悍',
-  `smoking` tinyint DEFAULT '0' COMMENT '抽烟: 0-不抽, 1-阳台抽, 2-室内抽',
-  `smoke_tolerance` tinyint DEFAULT '0' COMMENT '接受烟味: 0-不可, 1-可以',
-  `drinking` tinyint DEFAULT '0' COMMENT '喝酒: 0-无, 1-小酌, 2-酗酒',
-  `ac_temp` tinyint DEFAULT '26' COMMENT '空调温度习惯: 18-30',
-  `ac_duration` tinyint DEFAULT '1' COMMENT '空调时长: 1-整晚, 2-定时关闭',
-  `game_type_lol` tinyint DEFAULT '0' COMMENT '玩LOL/DOTA: 0-否 1-是',
-  `game_type_fps` tinyint DEFAULT '0' COMMENT '玩FPS(CS/瓦/三角洲): 0-否 1-是',
-  `game_type_3a` tinyint DEFAULT '0' COMMENT '玩3A大作: 0-否 1-是',
-  `game_type_mmo` tinyint DEFAULT '0' COMMENT '玩MMO: 0-否 1-是',
-  `game_type_mobile` tinyint DEFAULT '0' COMMENT '玩手游: 0-否 1-是',
-  `game_habit` tinyint DEFAULT '0' COMMENT '游戏习惯综合: 0-不玩 1-轻度 2-重度',
-  `game_voice` tinyint DEFAULT '1' COMMENT '连麦音量: 0-静音, 1-正常, 2-咆哮',
-  `keyboard_axis` tinyint DEFAULT '1' COMMENT '键盘轴体: 1-薄膜/静音, 2-红/茶轴, 3-青轴(吵)',
-  `is_cosplay` tinyint DEFAULT '0' COMMENT '玩Cosplay: 0-否 1-是',
-  `is_anime` tinyint DEFAULT '0' COMMENT '二次元浓度: 0-现充, 1-看番, 2-老二刺螈',
-  `mbti_e_i` char(1) DEFAULT 'E' COMMENT 'MBTI维度: E/I',
-  `mbti_result` varchar(4) DEFAULT NULL COMMENT 'MBTI结果(如INTJ)',
-  `social_battery` tinyint DEFAULT '3' COMMENT '社交意愿: 1-社恐(别理我) -> 5-社牛',
-  `share_items` tinyint DEFAULT '1' COMMENT '物品共享意愿: 0-皆不可, 1-部分可借, 2-随意用',
-  `bring_guest` tinyint DEFAULT '0' COMMENT '带人回寝: 0-绝不, 1-偶尔同性, 2-经常',
-  `visitors` tinyint DEFAULT '0' COMMENT '访客频率: 同上',
-  `relationship_status` tinyint DEFAULT '0' COMMENT '恋爱状态: 0-单身, 1-恋爱中(煲电话粥风险)',
-  `has_disability` tinyint DEFAULT '0' COMMENT '身体残疾: 0-无, 1-腿部残疾(需低层)',
-  `has_insulin` tinyint DEFAULT '0' COMMENT '胰岛素需求: 0-无, 1-需要冰箱',
-  `has_infectious` tinyint DEFAULT '0' COMMENT '传染性疾病: 0-无, 1-有(需单独处理)',
-  `religion_taboo` varchar(50) DEFAULT NULL COMMENT '宗教禁忌(如清真)',
-  `special_disease` varchar(255) DEFAULT NULL COMMENT '特殊疾病描述',
-  `create_by` varchar(64) DEFAULT 'system' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  `game_rank` tinyint DEFAULT '0' COMMENT '游戏段位: 0-青铜/白银 1-黄金/铂金 2-钻石/大师 3-王者',
-  `game_role` tinyint DEFAULT '0' COMMENT '游戏位置: 0-全能 1-上单 2-打野 3-中单 4-射手 5-辅助',
-  `eat_luosifen` tinyint DEFAULT '0' COMMENT '吃螺蛳粉: 0-拒绝 1-偶尔 2-重度',
-  `eat_durian` tinyint DEFAULT '0' COMMENT '吃榴莲: 0-拒绝 1-吃',
-  `region_type` tinyint DEFAULT NULL COMMENT '籍贯类型: 0-南方 1-北方 (由系统根据省份自动计算)',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `team_code` varchar(32) DEFAULT NULL COMMENT '组队码(三人行)',
+  `bed_time` tinyint DEFAULT '3' COMMENT '就寝:1-21点..6-2点+',
+  `wake_time` tinyint DEFAULT '3' COMMENT '起床:1-6点..6-11点+',
+  `smoke_tolerance` tinyint DEFAULT '0' COMMENT '烟味容忍:0-不可 1-可',
+  `smoking` tinyint DEFAULT '0' COMMENT '抽烟:0-不 1-阳台 2-室内',
+  `game_habit` tinyint DEFAULT '0' COMMENT '游戏:0-不玩 1-轻度 2-重度',
+  `region_type` tinyint DEFAULT NULL COMMENT '籍贯类型:0-南 1-北',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'system',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`user_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='用户全维度画像表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-用户画像表';
 
 /*Data for the table `biz_user_preference` */
 
-insert  into `biz_user_preference`(`user_id`,`team_code`,`bed_time`,`wake_time`,`siesta_habit`,`out_late_freq`,`sleep_quality`,`snoring_level`,`grinding_teeth`,`sleep_talk`,`climb_bed_noise`,`shower_freq`,`sock_wash`,`trash_habit`,`clean_freq`,`toilet_clean`,`desk_messy`,`personal_hygiene`,`odor_tolerance`,`smoking`,`smoke_tolerance`,`drinking`,`ac_temp`,`ac_duration`,`game_type_lol`,`game_type_fps`,`game_type_3a`,`game_type_mmo`,`game_type_mobile`,`game_habit`,`game_voice`,`keyboard_axis`,`is_cosplay`,`is_anime`,`mbti_e_i`,`mbti_result`,`social_battery`,`share_items`,`bring_guest`,`visitors`,`relationship_status`,`has_disability`,`has_insulin`,`has_infectious`,`religion_taboo`,`special_disease`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`,`game_rank`,`game_role`,`eat_luosifen`,`eat_durian`,`region_type`) values 
-(10000,NULL,2,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,1,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 12:05:31','',NULL,'0',NULL,2,0,0,0,NULL),
-(10001,NULL,4,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,1,0,0,26,1,1,0,0,0,0,0,1,1,0,0,'I',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 12:05:31','',NULL,'0',NULL,1,0,0,0,NULL),
-(10002,NULL,2,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 12:05:31','',NULL,'0',NULL,0,0,1,0,NULL),
-(10003,NULL,1,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'I',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 12:05:31','',NULL,'0',NULL,0,0,0,0,NULL),
-(10004,NULL,3,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,2,0,0,26,1,1,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 12:05:31','',NULL,'0',NULL,3,0,1,0,NULL),
-(80001,NULL,1,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'I',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,0,0,0,0,NULL),
-(80002,NULL,2,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,0,0,0,0,NULL),
-(80003,NULL,2,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,1,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,0,0,0,0,NULL),
-(80004,NULL,2,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,2,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,0,0,1,0,NULL),
-(80005,NULL,2,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'I',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,0,0,0,0,NULL),
-(2024001,NULL,3,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,3,0,2,0,NULL),
-(2024002,NULL,1,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'I',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,0,0,0,0,NULL),
-(2024003,NULL,3,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,2,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,3,0,0,0,NULL),
-(2024004,NULL,3,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'E',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,3,0,0,0,NULL),
-(2024005,NULL,2,3,0,0,2,0,0,0,0,1,0,1,2,1,2,3,2,0,0,0,26,1,0,0,0,0,0,0,1,1,0,0,'I',NULL,3,1,0,0,0,0,0,0,NULL,NULL,'system','2026-01-15 11:26:31','',NULL,'0',NULL,1,0,1,0,NULL);
+insert  into `biz_user_preference`(`user_id`,`team_code`,`bed_time`,`wake_time`,`smoke_tolerance`,`smoking`,`game_habit`,`region_type`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,NULL,5,3,0,0,2,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(2,NULL,6,3,0,1,1,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(3,NULL,3,3,0,1,2,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(4,NULL,2,3,0,1,1,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(5,NULL,5,3,0,0,0,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(6,NULL,5,3,0,1,1,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(7,NULL,4,3,0,0,2,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(8,NULL,4,3,0,0,1,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(9,NULL,1,3,0,0,1,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(10,NULL,4,3,0,1,1,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(11,NULL,3,3,0,0,2,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(12,NULL,5,3,0,0,1,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(13,NULL,5,3,0,0,0,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(14,NULL,2,3,0,0,2,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(15,NULL,2,3,0,0,1,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(16,NULL,4,3,0,1,2,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(17,NULL,2,3,0,1,0,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(18,NULL,5,3,0,0,0,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(19,NULL,5,3,0,0,0,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(20,NULL,2,3,0,0,2,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(21,NULL,4,3,0,1,1,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(22,NULL,5,3,0,0,0,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(23,NULL,6,3,0,1,2,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(24,NULL,2,3,0,0,1,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(25,NULL,4,3,0,0,0,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(26,NULL,3,3,0,0,1,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(27,NULL,2,3,0,1,0,0,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(28,NULL,4,3,0,0,1,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(29,NULL,3,3,0,0,2,1,'0','system','2026-01-15 18:43:32','',NULL,NULL),
+(30,NULL,2,3,0,1,2,1,'0','system','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `biz_utility_bill` */
 
 DROP TABLE IF EXISTS `biz_utility_bill`;
 
 CREATE TABLE `biz_utility_bill` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `room_id` bigint NOT NULL COMMENT '房间ID',
-  `month` varchar(7) NOT NULL COMMENT '月份 (YYYY-MM)',
-  `water_cold` decimal(10,2) DEFAULT '0.00' COMMENT '冷水用量',
-  `water_hot` decimal(10,2) DEFAULT '0.00' COMMENT '热水用量',
-  `elec_light` decimal(10,2) DEFAULT '0.00' COMMENT '照明电量',
-  `elec_ac` decimal(10,2) DEFAULT '0.00' COMMENT '空调电量',
-  `cost_water` decimal(10,2) DEFAULT '0.00' COMMENT '水费',
-  `cost_elec` decimal(10,2) DEFAULT '0.00' COMMENT '电费',
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `room_id` bigint NOT NULL,
+  `month` varchar(7) NOT NULL COMMENT '月份',
   `total_amount` decimal(10,2) DEFAULT '0.00' COMMENT '总金额',
-  `status` int DEFAULT '0' COMMENT '状态: 0-未付 1-已付',
-  `pay_time` datetime DEFAULT NULL COMMENT '支付时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  `version` int DEFAULT '1' COMMENT '乐观锁版本号',
+  `status` int DEFAULT '0' COMMENT '0-未付 1-已付',
+  `version` int DEFAULT '1' COMMENT '乐观锁',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_room_month` (`room_id`,`month`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-水电账单表';
+) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-水电账单表';
 
 /*Data for the table `biz_utility_bill` */
+
+insert  into `biz_utility_bill`(`id`,`room_id`,`month`,`total_amount`,`status`,`version`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,2,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,3,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,4,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,5,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,6,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,7,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,8,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,9,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(10,10,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(11,11,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(12,12,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(13,13,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(14,14,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(15,15,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(16,16,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(17,17,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(18,18,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(19,19,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(20,20,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(21,21,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(22,22,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(23,23,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(24,24,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(25,25,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(26,26,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(27,27,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(28,28,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(29,29,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(30,30,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(31,31,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(32,32,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(33,33,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(34,34,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(35,35,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(36,36,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(37,37,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(38,38,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(39,39,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(40,40,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(41,41,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(42,42,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(43,43,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(44,44,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(45,45,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(46,46,'2024-01',50.00,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `dorm_bed` */
 
@@ -299,27 +326,179 @@ CREATE TABLE `dorm_bed` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `room_id` bigint NOT NULL COMMENT '所属房间ID',
   `bed_label` varchar(20) NOT NULL COMMENT '床位号(如:1号床)',
-  `occupant_id` bigint DEFAULT NULL COMMENT '居住者ID',
-  `status` tinyint DEFAULT '0' COMMENT '状态: 0-空闲 1-占用',
+  `occupant_id` bigint DEFAULT NULL COMMENT '居住者ID (关联sys_ordinary_user)',
+  `status` tinyint DEFAULT '0' COMMENT '状态: 0-空闲 1-占用 2-报修',
+  `version` int DEFAULT '1' COMMENT '乐观锁 (防并发分配冲突)',
   `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  `version` int DEFAULT '1' COMMENT '乐观锁版本号',
   PRIMARY KEY (`id`),
-  KEY `fk_bed_room` (`room_id`),
-  KEY `fk_bed_user` (`occupant_id`),
+  KEY `idx_room` (`room_id`),
+  KEY `idx_occupant` (`occupant_id`),
   CONSTRAINT `fk_bed_room` FOREIGN KEY (`room_id`) REFERENCES `dorm_room` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_bed_user` FOREIGN KEY (`occupant_id`) REFERENCES `sys_ordinary_user` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍-床位表';
+) ENGINE=InnoDB AUTO_INCREMENT=155 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍-床位表';
 
 /*Data for the table `dorm_bed` */
 
-insert  into `dorm_bed`(`id`,`room_id`,`bed_label`,`occupant_id`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`,`version`) values 
-(1,1,'1号床',3,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,1),
-(2,1,'2号床',NULL,0,'0','admin','2026-01-15 12:22:12','',NULL,NULL,1);
+insert  into `dorm_bed`(`id`,`room_id`,`bed_label`,`occupant_id`,`status`,`version`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,'1号床',15,1,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(2,2,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,3,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,4,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,5,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,6,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,7,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,8,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,9,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(10,10,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(11,11,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(12,12,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(13,13,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(14,14,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(15,15,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(16,16,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(17,17,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(18,18,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(19,19,'1号床',11,1,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(20,20,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(21,21,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(22,22,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(23,23,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(24,24,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(25,25,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(26,26,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(27,27,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(28,28,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(29,29,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(30,30,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(31,31,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(32,32,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(33,33,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(34,34,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(35,35,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(36,36,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(37,37,'1号床',8,1,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(38,38,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(39,39,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(40,40,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(41,41,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(42,42,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(43,43,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(44,44,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(45,45,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(46,46,'1号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(47,1,'2号床',16,1,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(48,2,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(49,3,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(50,4,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(51,5,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(52,6,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(53,7,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(54,8,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(55,9,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(56,10,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(57,11,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(58,12,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(59,13,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(60,14,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(61,15,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(62,16,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(63,17,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(64,18,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(65,19,'2号床',12,1,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(66,20,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(67,21,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(68,22,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(69,23,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(70,24,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(71,25,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(72,26,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(73,27,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(74,28,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(75,29,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(76,30,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(77,31,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(78,32,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(79,33,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(80,34,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(81,35,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(82,36,'2号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(83,1,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(84,2,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(85,3,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(86,4,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(87,5,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(88,6,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(89,7,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(90,8,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(91,9,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(92,10,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(93,11,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(94,12,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(95,13,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(96,14,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(97,15,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(98,16,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(99,17,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(100,18,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(101,19,'3号床',13,1,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(102,20,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(103,21,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(104,22,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(105,23,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(106,24,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(107,25,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(108,26,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(109,27,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(110,28,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(111,29,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(112,30,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(113,31,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(114,32,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(115,33,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(116,34,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(117,35,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(118,36,'3号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(119,1,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(120,2,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(121,3,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(122,4,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(123,5,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(124,6,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(125,7,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(126,8,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(127,9,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(128,10,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(129,11,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(130,12,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(131,13,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(132,14,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(133,15,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(134,16,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(135,17,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(136,18,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(137,19,'4号床',14,1,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(138,20,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(139,21,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(140,22,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(141,23,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(142,24,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(143,25,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(144,26,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(145,27,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(146,28,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(147,29,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(148,30,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(149,31,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(150,32,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(151,33,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(152,34,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(153,35,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(154,36,'4号床',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `dorm_building` */
 
@@ -329,31 +508,29 @@ CREATE TABLE `dorm_building` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `campus_id` bigint NOT NULL COMMENT '所属校区ID',
   `name` varchar(50) NOT NULL COMMENT '楼栋名称',
-  `type` int DEFAULT '1' COMMENT '类型 (1:男 2:女 3:混合)',
+  `type` int DEFAULT '1' COMMENT '性别限制: 1-男楼 2-女楼 3-混合楼',
+  `usage_type` tinyint DEFAULT '0' COMMENT '用途: 0-学生宿舍 1-教职工公寓 (防刁民核心)',
   `floors` int DEFAULT '6' COMMENT '总层数',
-  `has_elevator` tinyint DEFAULT '0' COMMENT '有无电梯 (0:无 1:有)',
-  `power_limit` int DEFAULT '1000' COMMENT '限电功率(W)',
-  `status` int DEFAULT '1' COMMENT '状态 (1:启用 0:维修)',
+  `has_elevator` tinyint DEFAULT '0' COMMENT '有无电梯',
+  `power_limit` int DEFAULT '1000' COMMENT '默认限电功率(W)',
+  `status` int DEFAULT '1' COMMENT '状态: 1-启用 0-维修',
   `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  `usage_type` tinyint DEFAULT '0' COMMENT '用途: 0-学生宿舍 1-教职工公寓',
   PRIMARY KEY (`id`),
   KEY `fk_building_campus` (`campus_id`),
   CONSTRAINT `fk_building_campus` FOREIGN KEY (`campus_id`) REFERENCES `sys_campus` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍-楼栋表';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍-楼栋表';
 
 /*Data for the table `dorm_building` */
 
-insert  into `dorm_building`(`id`,`campus_id`,`name`,`type`,`floors`,`has_elevator`,`power_limit`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`,`usage_type`) values 
-(1,1,'海棠苑1号楼',2,6,0,1000,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0),
-(2,1,'海棠苑2号楼',1,6,0,1000,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0),
-(3,2,'铁西教工公寓A座',3,12,0,1000,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,1),
-(4,2,'铁西学生公寓3号',1,6,0,1000,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0),
-(5,3,'抚顺留学生楼',3,5,0,1000,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0);
+insert  into `dorm_building`(`id`,`campus_id`,`name`,`type`,`usage_type`,`floors`,`has_elevator`,`power_limit`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,'海棠苑1号楼(女)',2,0,6,0,1000,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,1,'丁香苑2号楼(男)',1,0,6,0,1000,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,2,'教工公寓A座',3,1,4,0,1000,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `dorm_change_request` */
 
@@ -363,23 +540,29 @@ CREATE TABLE `dorm_change_request` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `student_id` bigint NOT NULL COMMENT '申请学生ID',
   `current_room_id` bigint NOT NULL COMMENT '原房间ID',
-  `target_room_id` bigint DEFAULT NULL COMMENT '目标房间ID',
+  `target_room_id` bigint DEFAULT NULL COMMENT '目标房间ID (可选)',
   `type` int DEFAULT '0' COMMENT '类型: 0-换房 1-退宿 2-互换',
   `reason` varchar(500) DEFAULT NULL COMMENT '原因',
   `status` int DEFAULT '0' COMMENT '状态: 0-待审批 1-通过 2-驳回',
-  `swap_student_id` bigint DEFAULT NULL COMMENT '互换目标学生ID',
+  `swap_student_id` bigint DEFAULT NULL COMMENT '互换目标学生ID (防刁民: 只有互换类型才有值)',
   `audit_msg` varchar(255) DEFAULT NULL COMMENT '审批意见',
   `apply_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '申请时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-调宿申请表';
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `idx_student` (`student_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-调宿申请表';
 
 /*Data for the table `dorm_change_request` */
+
+insert  into `dorm_change_request`(`id`,`student_id`,`current_room_id`,`target_room_id`,`type`,`reason`,`status`,`swap_student_id`,`audit_msg`,`apply_time`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,15,1,NULL,0,'室友太吵',0,NULL,NULL,'2026-01-15 18:43:32','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,25,19,NULL,1,'退学',1,NULL,NULL,'2026-01-15 18:43:32','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,22,19,NULL,2,'想和好基友住',0,NULL,NULL,'2026-01-15 18:43:32','0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `dorm_fixed_asset` */
 
@@ -387,28 +570,37 @@ DROP TABLE IF EXISTS `dorm_fixed_asset`;
 
 CREATE TABLE `dorm_fixed_asset` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `asset_name` varchar(100) NOT NULL COMMENT '资产名称 (如: 书桌, 空调)',
-  `asset_code` varchar(64) NOT NULL COMMENT '资产编号 (唯一标识, 如: AD-101-01)',
-  `category` int NOT NULL COMMENT '分类: 1-家具(桌椅床柜) 2-电器(热水器空调) 3-基建(门窗洗漱台)',
+  `asset_name` varchar(100) NOT NULL COMMENT '资产名称',
+  `asset_code` varchar(64) NOT NULL COMMENT '资产编号 (唯一标识)',
+  `category` int NOT NULL COMMENT '分类: 1-家具 2-电器 3-基建',
   `room_id` bigint NOT NULL COMMENT '所属房间ID',
-  `price` decimal(10,2) DEFAULT '0.00' COMMENT '价值(元)',
-  `status` int DEFAULT '1' COMMENT '状态: 1-正常 2-报修中 3-损坏/丢失 4-报废',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  `price` decimal(10,2) DEFAULT '0.00' COMMENT '价值',
+  `status` int DEFAULT '1' COMMENT '状态: 1-正常 2-报修 3-丢失 4-报废',
   `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_asset_code` (`asset_code`),
-  KEY `fk_asset_room` (`room_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='资产管理表';
+  KEY `idx_room` (`room_id`),
+  CONSTRAINT `fk_asset_room` FOREIGN KEY (`room_id`) REFERENCES `dorm_room` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
+) ENGINE=InnoDB AUTO_INCREMENT=11 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='资产管理表';
 
 /*Data for the table `dorm_fixed_asset` */
 
-insert  into `dorm_fixed_asset`(`id`,`asset_name`,`asset_code`,`category`,`room_id`,`price`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(1,'空调','AC-001',2,1,0.00,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(2,'书桌','DK-001',1,1,0.00,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL);
+insert  into `dorm_fixed_asset`(`id`,`asset_name`,`asset_code`,`category`,`room_id`,`price`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'空调','AC-101-01',2,1,0.00,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,'空调','AC-101-02',2,2,0.00,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'空调','AC-101-03',2,3,0.00,2,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,'书桌','DK-101-01',1,1,0.00,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,'书桌','DK-101-02',1,1,0.00,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,'书桌','DK-101-03',1,1,0.00,3,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,'热水器','WH-202-01',2,20,0.00,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,'热水器','WH-202-02',2,21,0.00,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,'热水器','WH-202-03',2,22,0.00,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(10,'门锁','LK-303-01',3,30,0.00,2,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `dorm_floor` */
 
@@ -418,7 +610,7 @@ CREATE TABLE `dorm_floor` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `building_id` bigint NOT NULL COMMENT '所属楼栋ID',
   `floor_num` int NOT NULL COMMENT '楼层号',
-  `gender_limit` tinyint DEFAULT '0' COMMENT '性别限制 (0:无 1:男 2:女)',
+  `gender_limit` tinyint DEFAULT '0' COMMENT '性别限制: 0-无 1-男 2-女 (混合楼层必填)',
   `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
@@ -428,34 +620,41 @@ CREATE TABLE `dorm_floor` (
   PRIMARY KEY (`id`),
   KEY `fk_floor_building` (`building_id`),
   CONSTRAINT `fk_floor_building` FOREIGN KEY (`building_id`) REFERENCES `dorm_building` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍-楼层表';
+) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍-楼层表';
 
 /*Data for the table `dorm_floor` */
 
 insert  into `dorm_floor`(`id`,`building_id`,`floor_num`,`gender_limit`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(1,1,1,2,'0','admin','2026-01-15 12:22:12','',NULL,NULL),
-(2,1,2,2,'0','admin','2026-01-15 12:22:12','',NULL,NULL),
-(3,2,1,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL);
+(1,1,1,2,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,1,2,2,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,1,3,2,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,2,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,2,2,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,2,3,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,3,1,0,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,3,2,0,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,3,3,0,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `dorm_meter_electric` */
 
 DROP TABLE IF EXISTS `dorm_meter_electric`;
 
 CREATE TABLE `dorm_meter_electric` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` bigint NOT NULL AUTO_INCREMENT,
   `room_id` bigint NOT NULL COMMENT '房间ID',
-  `meter_no` varchar(50) NOT NULL COMMENT '电表编号',
+  `meter_no` varchar(50) NOT NULL COMMENT '设备号',
   `current_reading` decimal(10,2) DEFAULT '0.00' COMMENT '当前读数',
   `balance` decimal(10,2) DEFAULT '0.00' COMMENT '余额',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `status` int DEFAULT '1' COMMENT '状态: 1-在线 0-离线',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_room_e` (`room_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='电表实时信息表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='物联-电表设备表';
 
 /*Data for the table `dorm_meter_electric` */
 
@@ -464,19 +663,20 @@ CREATE TABLE `dorm_meter_electric` (
 DROP TABLE IF EXISTS `dorm_meter_water`;
 
 CREATE TABLE `dorm_meter_water` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` bigint NOT NULL AUTO_INCREMENT,
   `room_id` bigint NOT NULL COMMENT '房间ID',
-  `meter_no` varchar(50) NOT NULL COMMENT '水表编号',
+  `meter_no` varchar(50) NOT NULL COMMENT '设备号',
   `current_reading` decimal(10,2) DEFAULT '0.00' COMMENT '当前读数',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `status` int DEFAULT '1' COMMENT '状态: 1-在线 0-离线',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_room_w` (`room_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='水表实时信息表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='物联-水表设备表';
 
 /*Data for the table `dorm_meter_water` */
 
@@ -510,32 +710,75 @@ CREATE TABLE `dorm_room` (
   `building_id` bigint NOT NULL COMMENT '所属楼栋ID',
   `floor_id` bigint DEFAULT NULL COMMENT '所属楼层ID',
   `floor_no` int NOT NULL COMMENT '楼层号(冗余)',
-  `room_no` varchar(20) NOT NULL COMMENT '房间号',
-  `capacity` int DEFAULT '4' COMMENT '床位数',
-  `current_num` int DEFAULT '0' COMMENT '实住人数',
-  `gender` int DEFAULT '1' COMMENT '性别 (1:男 2:女 0:混合)',
-  `status` int DEFAULT '1' COMMENT '状态 (1:正常 0:维修 2:满员)',
+  `room_no` varchar(20) NOT NULL COMMENT '房间号(如101)',
+  `capacity` int DEFAULT '4' COMMENT '额定床位数',
+  `current_num` int DEFAULT '0' COMMENT '实住人数 (程序自动维护)',
+  `gender` int DEFAULT '1' COMMENT '性别: 1-男 2-女 (防刁民校验)',
+  `usage_type` tinyint DEFAULT '0' COMMENT '用途: 0-学生 1-教工 (冗余校验)',
+  `apartment_type` varchar(50) DEFAULT NULL COMMENT '户型: 单间/一室一厅',
+  `status` int DEFAULT '1' COMMENT '状态: 1-正常 0-维修 2-满员',
+  `version` int DEFAULT '1' COMMENT '乐观锁 (并发控制)',
   `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  `version` int DEFAULT '1' COMMENT '乐观锁版本号',
-  `apartment_type` varchar(50) DEFAULT NULL COMMENT '户型: 单间/一室一厅/两室一厅',
   PRIMARY KEY (`id`),
-  KEY `fk_room_building` (`building_id`),
+  KEY `idx_building` (`building_id`),
   KEY `fk_room_floor` (`floor_id`),
-  CONSTRAINT `fk_room_building` FOREIGN KEY (`building_id`) REFERENCES `dorm_building` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `fk_room_floor` FOREIGN KEY (`floor_id`) REFERENCES `dorm_floor` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍-房间表';
+) ENGINE=InnoDB AUTO_INCREMENT=47 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='宿舍-房间表';
 
 /*Data for the table `dorm_room` */
 
-insert  into `dorm_room`(`id`,`building_id`,`floor_id`,`floor_no`,`room_no`,`capacity`,`current_num`,`gender`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`,`version`,`apartment_type`) values 
-(1,1,1,1,'101',4,0,2,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,1,NULL),
-(2,1,1,1,'102',4,0,2,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,1,NULL),
-(3,2,3,1,'101',4,0,1,1,'0','admin','2026-01-15 12:22:12','',NULL,NULL,1,NULL);
+insert  into `dorm_room`(`id`,`building_id`,`floor_id`,`floor_no`,`room_no`,`capacity`,`current_num`,`gender`,`usage_type`,`apartment_type`,`status`,`version`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,1,1,'101',4,2,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(2,1,1,1,'102',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,1,1,1,'103',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,1,1,1,'104',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,1,1,1,'105',4,0,2,0,NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,1,1,1,'106',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,1,2,2,'201',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,1,2,2,'202',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,1,2,2,'203',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(10,1,2,2,'204',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(11,1,2,2,'205',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(12,1,2,2,'206',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(13,1,3,3,'301',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(14,1,3,3,'302',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(15,1,3,3,'303',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(16,1,3,3,'304',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(17,1,3,3,'305',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(18,1,3,3,'306',4,0,2,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(19,2,4,1,'101',4,4,1,0,NULL,2,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(20,2,4,1,'102',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(21,2,4,1,'103',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(22,2,4,1,'104',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(23,2,4,1,'105',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(24,2,4,1,'106',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(25,2,5,2,'201',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(26,2,5,2,'202',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(27,2,5,2,'203',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(28,2,5,2,'204',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(29,2,5,2,'205',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(30,2,5,2,'206',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(31,2,6,3,'301',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(32,2,6,3,'302',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(33,2,6,3,'303',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(34,2,6,3,'304',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(35,2,6,3,'305',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(36,2,6,3,'306',4,0,1,0,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(37,3,7,1,'101',1,1,1,1,NULL,2,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:43:32',NULL),
+(38,3,7,1,'102',1,0,2,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(39,3,7,1,'103',1,0,0,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(40,3,7,1,'104',1,0,0,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(41,3,7,1,'105',1,0,0,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(42,3,7,1,'106',1,0,0,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(43,3,8,2,'201',1,0,0,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(44,3,8,2,'202',1,0,0,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(45,3,8,2,'203',1,0,0,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(46,3,8,2,'204',1,0,0,1,NULL,1,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `dorm_staff_application` */
 
@@ -549,13 +792,13 @@ CREATE TABLE `dorm_staff_application` (
   `reason` varchar(255) DEFAULT NULL COMMENT '申请原因',
   `status` tinyint DEFAULT '0' COMMENT '0-待审批 1-通过 2-驳回',
   `remark` varchar(255) DEFAULT NULL COMMENT '审批备注',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='教职工住宿申请单';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='业务-教职工住宿申请单';
 
 /*Data for the table `dorm_staff_application` */
 
@@ -564,32 +807,45 @@ CREATE TABLE `dorm_staff_application` (
 DROP TABLE IF EXISTS `stu_profile`;
 
 CREATE TABLE `stu_profile` (
-  `user_id` bigint NOT NULL COMMENT '用户ID (主键, 关联 sys_ordinary_user.id)',
+  `user_id` bigint NOT NULL COMMENT '用户ID (关联 sys_ordinary_user.id)',
   `entry_year` int NOT NULL DEFAULT '2024' COMMENT '入学年份',
-  `status` tinyint DEFAULT '0' COMMENT '学籍状态 (0:在读 1:休学 2:毕业 3:退学)',
-  `current_bed_id` bigint DEFAULT NULL COMMENT '当前入住床位ID (冗余查询字段)',
+  `status` tinyint DEFAULT '0' COMMENT '学籍状态: 0-在读 1-休学 2-毕业 3-退学',
+  `current_bed_id` bigint DEFAULT NULL COMMENT '当前入住床位ID (冗余查询)',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`user_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='学生学籍档案扩展表';
 
 /*Data for the table `stu_profile` */
 
-insert  into `stu_profile`(`user_id`,`entry_year`,`status`,`current_bed_id`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(10000,2024,0,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(10001,2024,0,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(10002,2024,0,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(10003,2024,0,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(10004,2024,0,NULL,'admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(2024001,2024,0,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(2024002,2024,0,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(2024003,2024,0,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(2024004,2024,0,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(2024005,2024,0,NULL,'admin','2026-01-15 11:26:31','',NULL,'0',NULL);
+insert  into `stu_profile`(`user_id`,`entry_year`,`status`,`current_bed_id`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(11,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(12,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(13,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(14,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(15,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(16,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(17,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(18,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(19,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(20,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(21,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(22,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(23,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(24,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(25,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(26,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(27,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(28,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(29,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(30,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(31,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(32,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(33,2024,0,NULL,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_admin_user` */
 
@@ -610,142 +866,145 @@ CREATE TABLE `sys_admin_user` (
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_admin_name` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=18 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-管理员表';
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-后台管理员表';
 
 /*Data for the table `sys_admin_user` */
 
 insert  into `sys_admin_user`(`id`,`username`,`password`,`real_name`,`avatar`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(1,'admin','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','超级管理员',NULL,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(2,'manager_zhang','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张宿管',NULL,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(3,'manager_li','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李宿管',NULL,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(4,'counselor_wang','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王辅导员',NULL,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(5,'repair_master','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','赵维修工',NULL,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(13,'test_admin1','$2a$10$xxx','测试超管',NULL,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(14,'test_dorm1','$2a$10$xxx','海棠宿管',NULL,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(15,'test_repair','$2a$10$xxx','维修工头',NULL,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(16,'test_audit','$2a$10$xxx','审批员',NULL,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(17,'test_view','$2a$10$xxx','观察员',NULL,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL);
+(1,'admin','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','超级管理员',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,'dorm_admin_1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','海棠苑宿管阿姨',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'dorm_admin_2','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','丁香苑宿管大叔',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,'college_sec_1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','计算机学院王书记',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,'repair_boss','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','后勤李工头',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_algorithm_config` */
 
 DROP TABLE IF EXISTS `sys_algorithm_config`;
 
 CREATE TABLE `sys_algorithm_config` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `config_key` varchar(100) NOT NULL COMMENT '配置键 (如: weight_sleep_time)',
-  `config_value` varchar(100) NOT NULL COMMENT '配置值 (如: 0.8)',
-  `description` varchar(255) DEFAULT NULL COMMENT '配置说明',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `config_key` varchar(100) NOT NULL COMMENT '参数键',
+  `config_value` varchar(100) NOT NULL COMMENT '参数值',
+  `description` varchar(255) DEFAULT NULL COMMENT '描述',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uk_config_key` (`config_key`)
-) ENGINE=InnoDB AUTO_INCREMENT=16 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统核心参数配置表';
+  UNIQUE KEY `uk_key` (`config_key`)
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-算法参数配置';
 
 /*Data for the table `sys_algorithm_config` */
 
-insert  into `sys_algorithm_config`(`id`,`config_key`,`config_value`,`description`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(6,'weight.schedule','0.3','作息时间权重','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(7,'weight.hygiene','0.2','卫生习惯权重','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(8,'weight.smoke','100','抽烟一票否决阈值','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(9,'weight.game','0.1','游戏兴趣权重','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(10,'allocate.open','true','系统是否开放分配','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(11,'weight_smoke','0.9','吸烟回避权重','admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(12,'weight_sleep','0.8','作息匹配权重','admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(13,'weight_game','0.5','游戏同好权重','admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(14,'weight_mbti','0.3','性格互补权重','admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(15,'weight_region','0.2','地域融合权重','admin','2026-01-15 12:05:31','',NULL,'0',NULL);
+insert  into `sys_algorithm_config`(`id`,`config_key`,`config_value`,`description`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'weight_sleep','0.8','作息权重','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,'weight_game','0.5','游戏权重','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'allocate_open','true','开放分配','0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_campus` */
 
 DROP TABLE IF EXISTS `sys_campus`;
 
 CREATE TABLE `sys_campus` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '校区ID',
-  `campus_name` varchar(64) NOT NULL COMMENT '校区名称 (如: 主校区, 浑南校区)',
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `campus_name` varchar(64) NOT NULL COMMENT '校区名称',
   `address` varchar(255) DEFAULT NULL COMMENT '详细地址',
-  `contact_phone` varchar(20) DEFAULT NULL COMMENT '校区联系电话',
+  `contact_phone` varchar(20) DEFAULT NULL COMMENT '联系电话',
   `status` tinyint DEFAULT '1' COMMENT '状态: 1-启用 0-停用',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除: 0-未删 1-已删',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='校区基础信息表';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='基础-校区表';
 
 /*Data for the table `sys_campus` */
 
-insert  into `sys_campus`(`id`,`campus_name`,`address`,`contact_phone`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(1,'浑南新校区','沈阳市浑南区智慧大街100号',NULL,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(2,'铁西校区','沈阳市铁西区建设大路5号',NULL,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(3,'抚顺分校','抚顺市望花区和平路',NULL,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(4,'朝阳校区','朝阳市双塔区文化路',NULL,0,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(5,'国际交流中心','沈阳市沈河区青年大街',NULL,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL);
+insert  into `sys_campus`(`id`,`campus_name`,`address`,`contact_phone`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'東京都港区主校区','智慧大街100号',NULL,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:48:08',NULL),
+(2,'军马场东校区','建设大路5号',NULL,1,'0','admin','2026-01-15 18:43:32','','2026-01-15 18:45:07',NULL),
+(3,'中德国际校区','开发大路88号',NULL,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_college` */
 
 DROP TABLE IF EXISTS `sys_college`;
 
 CREATE TABLE `sys_college` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '学院ID (对应学号中的两位学院码)',
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `campus_id` bigint NOT NULL COMMENT '所属校区ID',
-  `college_name` varchar(64) NOT NULL COMMENT '学院名称 (如: 计算机学院)',
-  `short_name` varchar(32) DEFAULT NULL COMMENT '简称',
+  `college_name` varchar(64) NOT NULL COMMENT '学院名称',
+  `short_name` varchar(32) DEFAULT NULL COMMENT '学院简称',
   `sort` int DEFAULT '0' COMMENT '排序',
   `status` tinyint DEFAULT '1' COMMENT '状态: 1-启用 0-停用',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`),
   KEY `idx_campus` (`campus_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='二级学院表';
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='基础-学院表';
 
 /*Data for the table `sys_college` */
 
-insert  into `sys_college`(`id`,`campus_id`,`college_name`,`short_name`,`sort`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(1,1,'外国语学院',NULL,1,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(2,1,'艺术设计学院',NULL,2,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(3,2,'机械工程学院',NULL,3,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(4,2,'材料科学学院',NULL,4,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(5,3,'石油化工学院',NULL,5,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL);
+insert  into `sys_college`(`id`,`campus_id`,`college_name`,`short_name`,`sort`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,'计算机科学与工程学院',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,1,'外国语学院',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,2,'机械工程学院',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,2,'土木建筑学院',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,3,'中德应用技术学院',NULL,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_dept` */
 
 DROP TABLE IF EXISTS `sys_dept`;
 
 CREATE TABLE `sys_dept` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '部门ID (对应工号中的两位部门码)',
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `campus_id` bigint NOT NULL COMMENT '所属校区ID',
-  `dept_name` varchar(64) NOT NULL COMMENT '部门名称 (如: 后勤处, 财务处)',
+  `dept_name` varchar(64) NOT NULL COMMENT '部门名称',
   `parent_id` bigint DEFAULT '0' COMMENT '父部门ID (0为顶级)',
   `sort` int DEFAULT '0' COMMENT '排序',
   `status` tinyint DEFAULT '1' COMMENT '状态: 1-启用 0-停用',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`),
   KEY `idx_campus` (`campus_id`)
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='行政部门表';
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='基础-部门表';
 
 /*Data for the table `sys_dept` */
 
-insert  into `sys_dept`(`id`,`campus_id`,`dept_name`,`parent_id`,`sort`,`status`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(1,1,'保卫处',0,0,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(2,1,'学生工作处',0,0,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(3,2,'财务处',0,0,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(4,2,'图书馆',0,0,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL),
-(5,3,'后勤服务中心',0,0,1,'admin','2026-01-15 12:22:12','',NULL,'0',NULL);
+insert  into `sys_dept`(`id`,`campus_id`,`dept_name`,`parent_id`,`sort`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,'学生工作处',0,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,1,'后勤保障处',0,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,1,'保卫处',0,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,2,'财务处',0,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,3,'国际交流中心',0,0,1,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
+
+/*Table structure for table `sys_login_log` */
+
+DROP TABLE IF EXISTS `sys_login_log`;
+
+CREATE TABLE `sys_login_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '访问ID',
+  `username` varchar(50) DEFAULT '' COMMENT '登录账号',
+  `ipaddr` varchar(128) DEFAULT '' COMMENT '登录IP地址',
+  `status` char(1) DEFAULT '0' COMMENT '登录状态（0成功 1失败）',
+  `msg` varchar(255) DEFAULT '' COMMENT '提示信息',
+  `access_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '访问时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_access_time` (`access_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-登录日志表';
+
+/*Data for the table `sys_login_log` */
 
 /*Table structure for table `sys_major` */
 
@@ -755,62 +1014,78 @@ CREATE TABLE `sys_major` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
   `college_id` bigint NOT NULL COMMENT '所属学院ID',
   `name` varchar(50) NOT NULL COMMENT '专业名称',
-  `level` varchar(20) DEFAULT '本科' COMMENT '培养层次',
-  `duration` int DEFAULT '4' COMMENT '学制',
+  `level` varchar(20) DEFAULT '本科' COMMENT '培养层次(本科/研究生)',
+  `duration` int DEFAULT '4' COMMENT '学制(年)',
+  `sort` int DEFAULT '0' COMMENT '排序',
   `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  `sort` int DEFAULT '0' COMMENT '排序优先级',
   PRIMARY KEY (`id`),
   KEY `fk_major_college` (`college_id`),
   CONSTRAINT `fk_major_college` FOREIGN KEY (`college_id`) REFERENCES `sys_college` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='基础信息-专业表';
+) ENGINE=InnoDB AUTO_INCREMENT=6 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='基础-专业表';
 
 /*Data for the table `sys_major` */
 
-insert  into `sys_major`(`id`,`college_id`,`name`,`level`,`duration`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`,`sort`) values 
-(1,1,'英语','本科',4,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0),
-(2,2,'视觉传达设计','本科',4,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0),
-(3,2,'环境设计','本科',4,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0),
-(4,3,'机械制造及其自动化','本科',4,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0),
-(5,5,'化学工程','研究生',3,'0','admin','2026-01-15 12:22:12','',NULL,NULL,0);
+insert  into `sys_major`(`id`,`college_id`,`name`,`level`,`duration`,`sort`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,'软件工程','本科',4,0,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,1,'人工智能','研究生',4,0,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,2,'英语','本科',4,0,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,3,'机械设计制造','本科',4,0,'0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,4,'土木工程','本科',4,0,'0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_notice` */
 
 DROP TABLE IF EXISTS `sys_notice`;
 
 CREATE TABLE `sys_notice` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `id` bigint NOT NULL AUTO_INCREMENT,
   `title` varchar(128) NOT NULL COMMENT '标题',
   `content` text NOT NULL COMMENT '内容',
-  `type` int DEFAULT '1' COMMENT '类型',
-  `level` int DEFAULT '0' COMMENT '级别',
-  `status` char(1) DEFAULT '0' COMMENT '状态',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `type` int DEFAULT '1' COMMENT '类型: 1-通知 2-公告',
+  `status` char(1) DEFAULT '0' COMMENT '0-正常 1-关闭',
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-通知公告表';
+) ENGINE=InnoDB AUTO_INCREMENT=4 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-通知公告';
 
 /*Data for the table `sys_notice` */
 
-insert  into `sys_notice`(`id`,`title`,`content`,`type`,`level`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(12,'2026年寒假离校通知','请各位同学于1月15日前离校...',1,0,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(13,'关于严禁使用违规电器的通知','近期发现多起违规用电...',2,0,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(14,'宿舍卫生大检查安排','本周三下午进行...',1,0,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(15,'教职工选房系统开放通知','新一轮选房将于...',1,0,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(16,'失物招领：海棠苑食堂捡到饭卡','请失主到...',1,0,'0','0','admin','2026-01-15 11:26:31','',NULL,NULL),
-(17,'2026春季开学通知','请各位同学按时返校...',1,0,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(18,'关于严禁使用违规电器的警告','近期发现多起热得快...',2,0,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(19,'宿舍网费调整公告','自下月起网费下调...',1,0,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(20,'停水通知','因管道维修，明日停水...',2,0,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(21,'文明寝室评选结果','恭喜101等寝室获奖...',1,0,'0','0','admin','2026-01-15 12:05:31','',NULL,NULL);
+insert  into `sys_notice`(`id`,`title`,`content`,`type`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'关于寒假封楼的通知','全员离校...',1,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,'失物招领','捡到饭卡一张...',2,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'违规电器通报批评','以下寝室...',1,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL);
+
+/*Table structure for table `sys_oper_log` */
+
+DROP TABLE IF EXISTS `sys_oper_log`;
+
+CREATE TABLE `sys_oper_log` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '日志主键',
+  `title` varchar(50) DEFAULT '' COMMENT '模块标题',
+  `business_type` int DEFAULT '0' COMMENT '业务类型（0其它 1新增 2修改 3删除 4分配）',
+  `method` varchar(100) DEFAULT '' COMMENT '方法名称',
+  `request_method` varchar(10) DEFAULT '' COMMENT '请求方式',
+  `oper_name` varchar(50) DEFAULT '' COMMENT '操作人员',
+  `oper_url` varchar(255) DEFAULT '' COMMENT '请求URL',
+  `oper_ip` varchar(128) DEFAULT '' COMMENT '主机地址',
+  `oper_param` varchar(2000) DEFAULT '' COMMENT '请求参数',
+  `json_result` varchar(2000) DEFAULT '' COMMENT '返回参数',
+  `status` int DEFAULT '0' COMMENT '操作状态（0正常 1异常）',
+  `error_msg` varchar(2000) DEFAULT '' COMMENT '错误消息',
+  `oper_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '操作时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_oper_time` (`oper_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-操作日志表';
+
+/*Data for the table `sys_oper_log` */
 
 /*Table structure for table `sys_ordinary_user` */
 
@@ -818,44 +1093,70 @@ DROP TABLE IF EXISTS `sys_ordinary_user`;
 
 CREATE TABLE `sys_ordinary_user` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `username` varchar(64) NOT NULL COMMENT '学号/工号 (登录账号)',
+  `username` varchar(64) NOT NULL COMMENT '学号/工号 (唯一登录凭证)',
   `password` varchar(100) NOT NULL COMMENT '加密密码',
   `real_name` varchar(50) NOT NULL COMMENT '真实姓名',
   `avatar` varchar(255) DEFAULT NULL COMMENT '头像路径',
   `user_category` int DEFAULT '0' COMMENT '类别: 0-学生 1-教职工',
-  `sex` tinyint DEFAULT '1' COMMENT '性别: 1-男 2-女',
+  `sex` tinyint DEFAULT '1' COMMENT '性别: 1-男 2-女 (防刁民校验基准)',
   `phone` varchar(20) DEFAULT NULL COMMENT '手机号',
-  `college_id` bigint DEFAULT NULL COMMENT '学院ID',
-  `major_id` bigint DEFAULT NULL COMMENT '专业ID',
-  `class_id` bigint DEFAULT NULL COMMENT '班级ID',
-  `residence_type` int DEFAULT '0' COMMENT '居住类型: 0-住校 1-校外',
-  `status` char(1) DEFAULT '0' COMMENT '状态: 0-正常 1-停用',
+  `id_card` varchar(20) DEFAULT NULL COMMENT '身份证号(敏感)',
+  `ethnicity` varchar(20) DEFAULT '汉族' COMMENT '民族',
+  `campus_id` bigint DEFAULT NULL COMMENT '归属校区ID',
+  `college_id` bigint DEFAULT NULL COMMENT '学院ID (学生必填)',
+  `major_id` bigint DEFAULT NULL COMMENT '专业ID (学生必填)',
+  `class_id` bigint DEFAULT NULL COMMENT '班级ID (学生必填)',
+  `dept_id` bigint DEFAULT NULL COMMENT '部门ID (教工必填)',
+  `residence_type` int DEFAULT '0' COMMENT '居住类型: 0-住校 1-校外(走读)',
+  `status` char(1) DEFAULT '0' COMMENT '状态: 0-正常 1-停用(封禁)',
   `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
   `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
-  `id_card` varchar(20) DEFAULT NULL COMMENT '身份证号',
-  `ethnicity` varchar(20) DEFAULT '汉族' COMMENT '民族',
-  `campus_id` bigint DEFAULT NULL COMMENT '冗余校区ID (方便查询)',
-  `dept_id` bigint DEFAULT NULL COMMENT '部门ID (教工用)',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_username` (`username`),
-  KEY `fk_user_class` (`class_id`),
-  CONSTRAINT `fk_user_class` FOREIGN KEY (`class_id`) REFERENCES `biz_class` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
-) ENGINE=InnoDB AUTO_INCREMENT=8 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-普通用户表';
+  KEY `idx_class` (`class_id`),
+  KEY `idx_dept` (`dept_id`)
+) ENGINE=InnoDB AUTO_INCREMENT=34 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-普通用户表(学生/教工)';
 
 /*Data for the table `sys_ordinary_user` */
 
-insert  into `sys_ordinary_user`(`id`,`username`,`password`,`real_name`,`avatar`,`user_category`,`sex`,`phone`,`college_id`,`major_id`,`class_id`,`residence_type`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`,`id_card`,`ethnicity`,`campus_id`,`dept_id`) values 
-(1,'2024001','$2a$10$xxx','张三',NULL,0,1,NULL,1,NULL,NULL,0,'0','0','admin','2026-01-15 12:22:12','',NULL,NULL,NULL,'汉族',NULL,NULL),
-(2,'2024002','$2a$10$xxx','李四',NULL,0,1,NULL,1,NULL,NULL,0,'0','0','admin','2026-01-15 12:22:12','',NULL,NULL,NULL,'汉族',NULL,NULL),
-(3,'2024003','$2a$10$xxx','王五',NULL,0,2,NULL,2,NULL,NULL,0,'0','0','admin','2026-01-15 12:22:12','',NULL,NULL,NULL,'汉族',NULL,NULL),
-(4,'2024004','$2a$10$xxx','赵六',NULL,0,2,NULL,2,NULL,NULL,0,'0','0','admin','2026-01-15 12:22:12','',NULL,NULL,NULL,'汉族',NULL,NULL),
-(5,'2024005','$2a$10$xxx','钱七',NULL,0,1,NULL,3,NULL,NULL,1,'0','0','admin','2026-01-15 12:22:12','',NULL,NULL,NULL,'汉族',NULL,NULL),
-(6,'80001','$2a$10$xxx','王教授',NULL,1,1,NULL,NULL,NULL,NULL,1,'0','0','admin','2026-01-15 12:22:12','',NULL,NULL,NULL,'汉族',NULL,1),
-(7,'80002','$2a$10$xxx','李老师',NULL,1,2,NULL,NULL,NULL,NULL,0,'0','0','admin','2026-01-15 12:22:12','',NULL,NULL,NULL,'汉族',NULL,1);
+insert  into `sys_ordinary_user`(`id`,`username`,`password`,`real_name`,`avatar`,`user_category`,`sex`,`phone`,`id_card`,`ethnicity`,`campus_id`,`college_id`,`major_id`,`class_id`,`dept_id`,`residence_type`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'2015JZG001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张教授',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,'2018JZG002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李辅导员',NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'2019JZG003','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','赵保卫',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,3,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,'2020JZG004','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','孙会计',NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,4,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,'2021JZG005','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','周维修',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,2,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,'2022JZG006','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','吴外教',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,5,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,'2023JZG007','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','郑行政',NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,'2024JZG008','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王新讲师',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,'2024JZG009','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刘新讲师',NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(10,'2000JZG010','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','老院长',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(11,'20240101','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张三',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(12,'20240102','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李四',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(13,'20240103','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王五',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(14,'20240104','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','赵六',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(15,'20240201','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小红',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(16,'20240202','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小兰',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(17,'20240203','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小美',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(18,'20240204','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小丽',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(19,'20250301','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Alice',NULL,0,2,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(20,'20250302','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Bob',NULL,0,1,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(21,'20250303','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Cindy',NULL,0,2,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(22,'20240401','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','铁柱',NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(23,'20240402','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','钢蛋',NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(24,'20240403','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','二狗',NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(25,'BAD001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刁民甲',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'1','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(26,'BAD002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刁民乙',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(27,'2023Y01','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','研一师兄',NULL,0,1,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(28,'2023Y02','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','研二师姐',NULL,0,2,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(29,'2023Y03','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李小牧',NULL,0,1,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(30,'FILL01','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人A',NULL,0,1,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(31,'FILL02','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人B',NULL,0,1,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(32,'FILL03','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人C',NULL,0,2,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(33,'FILL04','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人D',NULL,0,2,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_role` */
 
@@ -864,50 +1165,45 @@ DROP TABLE IF EXISTS `sys_role`;
 CREATE TABLE `sys_role` (
   `id` bigint NOT NULL AUTO_INCREMENT COMMENT '角色ID',
   `role_name` varchar(30) NOT NULL COMMENT '角色名称',
-  `role_key` varchar(100) NOT NULL COMMENT '角色标识',
-  `status` char(1) DEFAULT '0' COMMENT '状态',
-  `del_flag` char(1) DEFAULT '0' COMMENT '删除标志',
+  `role_key` varchar(100) NOT NULL COMMENT '角色标识(代码鉴权用)',
+  `sort` int DEFAULT '0' COMMENT '显示顺序',
+  `status` char(1) DEFAULT '0' COMMENT '状态: 0-正常 1-停用',
+  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
   `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
   `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL COMMENT '更新时间',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=10 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB AUTO_INCREMENT=9 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-角色表';
 
 /*Data for the table `sys_role` */
 
-insert  into `sys_role`(`id`,`role_name`,`role_key`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(1,'超级管理员','super_admin','0','0','admin','2026-01-13 14:52:42','',NULL,NULL),
-(2,'宿管经理','dorm_manager','0','0','admin','2026-01-13 14:52:42','',NULL,NULL),
-(3,'辅导员','counselor','0','0','admin','2026-01-13 14:52:42','',NULL,NULL),
-(4,'学生','student','0','0','admin','2026-01-13 14:52:42','',NULL,NULL),
-(5,'维修人员','repair_staff','0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(6,'财务人员','finance_staff','0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(7,'保卫人员','security_staff','0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(8,'学院辅导员','college_teacher','0','0','admin','2026-01-15 12:05:31','',NULL,NULL),
-(9,'访客','visitor','0','0','admin','2026-01-15 12:05:31','',NULL,NULL);
+insert  into `sys_role`(`id`,`role_name`,`role_key`,`sort`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'超级管理员','super_admin',1,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,'部门/学院管理员','dept_admin',2,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'宿管经理','dorm_manager',3,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,'辅导员','counselor',4,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,'维修人员','repair_staff',5,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,'学生','student',6,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,'学院教职工','college_teacher',7,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,'后勤职工','staff',8,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_user_role` */
 
 DROP TABLE IF EXISTS `sys_user_role`;
 
 CREATE TABLE `sys_user_role` (
-  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID (包括admin和ordinary)',
   `role_id` bigint NOT NULL COMMENT '角色ID',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
   PRIMARY KEY (`user_id`,`role_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-用户角色关联表';
 
 /*Data for the table `sys_user_role` */
 
 insert  into `sys_user_role`(`user_id`,`role_id`,`create_time`) values 
-(1001,4,'2026-01-13 16:02:37'),
-(1002,4,'2026-01-13 16:02:37'),
-(1003,4,'2026-01-13 16:02:37'),
-(1004,4,'2026-01-13 16:02:37'),
-(1005,4,'2026-01-13 16:02:37'),
-(1006,4,'2026-01-13 16:02:37');
+(29,7,'2026-01-15 18:43:32');
 
 /*Table structure for table `sys_utility_price` */
 
@@ -915,66 +1211,46 @@ DROP TABLE IF EXISTS `sys_utility_price`;
 
 CREATE TABLE `sys_utility_price` (
   `id` bigint NOT NULL AUTO_INCREMENT,
-  `type` int NOT NULL COMMENT '类型: 1-水 2-电',
-  `name` varchar(50) NOT NULL COMMENT '费用名称 (如: 居民用电)',
-  `price` decimal(10,4) NOT NULL COMMENT '单价 (元)',
-  `unit` varchar(10) DEFAULT NULL COMMENT '单位 (度/吨)',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT '' COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `type` int NOT NULL COMMENT '1-水 2-电',
+  `name` varchar(50) NOT NULL,
+  `price` decimal(10,4) NOT NULL,
+  `unit` varchar(10) DEFAULT NULL,
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=15 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='水电费单价配置';
+) ENGINE=InnoDB AUTO_INCREMENT=3 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='配置-基础水电价';
 
 /*Data for the table `sys_utility_price` */
 
-insert  into `sys_utility_price`(`id`,`type`,`name`,`price`,`unit`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(5,1,'居民生活用水',3.5000,'吨','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(6,1,'非居民用水',5.0000,'吨','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(7,2,'基础电价',0.5000,'度','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(8,2,'第二阶梯电价',0.6000,'度','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(9,2,'商业用电',1.0000,'度','admin','2026-01-15 11:26:31','',NULL,'0',NULL),
-(10,1,'居民生活用水',3.5000,'吨','admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(11,1,'商业用水',5.5000,'吨','admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(12,2,'基础电价',0.5500,'度','admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(13,2,'峰时电价',0.8500,'度','admin','2026-01-15 12:05:31','',NULL,'0',NULL),
-(14,2,'谷时电价',0.3500,'度','admin','2026-01-15 12:05:31','',NULL,'0',NULL);
+insert  into `sys_utility_price`(`id`,`type`,`name`,`price`,`unit`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,1,'生活用水',3.5000,'吨','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,2,'基础电价',0.5600,'度','0','admin','2026-01-15 18:43:32','','2026-01-15 18:44:01',NULL);
 
 /*Table structure for table `sys_utility_price_rule` */
 
 DROP TABLE IF EXISTS `sys_utility_price_rule`;
 
 CREATE TABLE `sys_utility_price_rule` (
-  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
-  `rule_name` varchar(100) NOT NULL COMMENT '规则名称',
-  `utility_type` tinyint NOT NULL COMMENT '1-电, 2-水',
-  `tier_start` decimal(10,2) NOT NULL DEFAULT '0.00' COMMENT '阶梯起始量',
-  `tier_end` decimal(10,2) DEFAULT '9999.99' COMMENT '阶梯结束量',
-  `unit_price` decimal(10,3) NOT NULL COMMENT '单价',
-  `create_by` varchar(64) DEFAULT 'admin' COMMENT '创建者',
-  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
-  `update_by` varchar(64) DEFAULT NULL COMMENT '更新者',
-  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
-  `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
-  `remark` varchar(500) DEFAULT NULL COMMENT '备注',
+  `id` bigint NOT NULL AUTO_INCREMENT,
+  `rule_name` varchar(100) NOT NULL,
+  `utility_type` tinyint NOT NULL COMMENT '1-电 2-水',
+  `tier_start` decimal(10,2) NOT NULL,
+  `tier_end` decimal(10,2) DEFAULT '9999.99',
+  `unit_price` decimal(10,3) NOT NULL,
+  `del_flag` char(1) DEFAULT '0',
+  `create_by` varchar(64) DEFAULT 'admin',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP,
+  `update_by` varchar(64) DEFAULT '',
+  `update_time` datetime DEFAULT NULL ON UPDATE CURRENT_TIMESTAMP,
+  `remark` varchar(500) DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB AUTO_INCREMENT=14 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='水电价位表';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='配置-阶梯计价规则';
 
 /*Data for the table `sys_utility_price_rule` */
-
-insert  into `sys_utility_price_rule`(`id`,`rule_name`,`utility_type`,`tier_start`,`tier_end`,`unit_price`,`create_by`,`create_time`,`update_by`,`update_time`,`del_flag`,`remark`) values 
-(4,'一阶水费',2,0.00,10.00,3.500,'admin','2026-01-15 11:26:31',NULL,NULL,'0',NULL),
-(5,'二阶水费',2,10.01,20.00,4.500,'admin','2026-01-15 11:26:31',NULL,NULL,'0',NULL),
-(6,'三阶水费',2,20.01,9999.00,6.000,'admin','2026-01-15 11:26:31',NULL,NULL,'0',NULL),
-(7,'一阶电费',1,0.00,100.00,0.500,'admin','2026-01-15 11:26:31',NULL,NULL,'0',NULL),
-(8,'二阶电费',1,100.01,9999.00,0.600,'admin','2026-01-15 11:26:31',NULL,NULL,'0',NULL),
-(9,'一阶水费',2,0.00,10.00,3.500,'admin','2026-01-15 12:05:31',NULL,NULL,'0',NULL),
-(10,'二阶水费',2,10.00,20.00,4.500,'admin','2026-01-15 12:05:31',NULL,NULL,'0',NULL),
-(11,'三阶水费',2,20.00,9999.00,6.000,'admin','2026-01-15 12:05:31',NULL,NULL,'0',NULL),
-(12,'一阶电费',1,0.00,100.00,0.550,'admin','2026-01-15 12:05:31',NULL,NULL,'0',NULL),
-(13,'二阶电费',1,100.00,300.00,0.650,'admin','2026-01-15 12:05:31',NULL,NULL,'0',NULL);
 
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
 /*!40014 SET FOREIGN_KEY_CHECKS=@OLD_FOREIGN_KEY_CHECKS */;

@@ -5,12 +5,13 @@ spring:
   application:
     name: mol-launcher
 
-  # 【核心】导入配置
+  # 🟢 核心修复：显式导入子模块配置
+  # 这样 Launcher 启动时，就会加载 server 和 dorm 里的 MyBatis、Swagger 配置
   config:
     import:
-      - optional:classpath:/common-base.yml
-      - optional:classpath:/application-server.yml
-      - optional:classpath:/application-dorm.yml
+      - optional:classpath:/common-base.yml       # 基础库 (数据库/Redis)
+      - optional:classpath:/application-server.yml # 系统模块 (Sys分组)
+      - optional:classpath:/application-dorm.yml   # 宿舍模块 (Dorm分组)
 
   main:
     allow-bean-definition-overriding: true

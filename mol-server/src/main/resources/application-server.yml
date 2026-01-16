@@ -44,8 +44,8 @@ springdoc:
     title: "MOL-Dorm 系统管理模块文档"
     description: "包含用户认证、权限分配、校区管理等核心基础接口"
     version: "1.0.0"
-  group-configs:
-    - group: 'sys'
-      paths-to-match: '/**'
-      # Controller 扫描包名
-      packages-to-scan: com.mol.server.controller
+#  group-configs:
+#    - group: 'sys'
+#      paths-to-match: '/**'
+#      # Controller 扫描包名
+#      packages-to-scan: com.mol.server.controller

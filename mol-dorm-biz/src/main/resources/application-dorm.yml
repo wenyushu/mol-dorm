@@ -46,7 +46,7 @@ springdoc:
     description: "涵盖宿舍楼、房间、床位、水电费记录及报修流程等业务处理"
     version: "1.0.0"
   # 分组扫描
-  group-configs:
-    - group: 'dorm' # 这里定义了分组名
-      paths-to-match: '/**'
-      packages-to-scan: com.mol.dorm.biz.controller # 扫描业务模块控制器
+#  group-configs:
+#    - group: 'dorm' # 这里定义了分组名
+#      paths-to-match: '/**'
+#      packages-to-scan: com.mol.dorm.biz.controller # 扫描业务模块控制器

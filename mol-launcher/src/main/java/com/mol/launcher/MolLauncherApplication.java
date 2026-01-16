@@ -50,21 +50,21 @@ public class MolLauncherApplication {
         String path = env.getProperty("server.servlet.context-path");
         String localUrl = "http://localhost:" + port + path;
         
-        System.out.println("""
-            #############################################################
-            (♥◠‿◠)ﾉﾞ  MOL-DORM 宿舍管理系统 (聚合版) 启动成功   ლ(´ڡ`ლ)ﾞ
-            
-            架构模式: 模块化单体 (所有模块在同一进程内运行，Service可直接注入)
-            运行端口: %s
-            -------------------------------------------------------------
-            >>> 统一接口文档 (Knife4j/Swagger):
-            %s/swagger-ui/index.html
-            
-            >>> 模块分组 (自动路由前缀已生效):
-            [系统管理]: %s/swagger-ui/index.html?urls.primaryName=sys
-            [宿舍业务]: %s/swagger-ui/index.html?urls.primaryName=dorm
-            -------------------------------------------------------------
-            #############################################################
-            """.formatted(port, localUrl, localUrl, localUrl));
+        System.out.printf("""
+                #############################################################
+                (♥◠‿◠)ﾉﾞ  MOL-DORM 宿舍管理系统 (聚合版) 启动成功   ლ(´ڡ`ლ)ﾞ
+                
+                架构模式: 模块化单体 (所有模块在同一进程内运行，Service可直接注入)
+                运行端口: %s
+                -------------------------------------------------------------
+                >>> 统一接口文档 (Knife4j/Swagger):
+                %s/swagger-ui/index.html
+                
+                >>> 模块分组 (自动路由前缀已生效):
+                [系统管理]: %s/swagger-ui/index.html?urls.primaryName=sys
+                [宿舍业务]: %s/swagger-ui/index.html?urls.primaryName=dorm
+                -------------------------------------------------------------
+                #############################################################
+                %n""", port, localUrl, localUrl, localUrl);
     }
 }
