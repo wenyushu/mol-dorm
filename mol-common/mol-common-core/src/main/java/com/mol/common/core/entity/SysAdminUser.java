@@ -41,6 +41,10 @@ public class SysAdminUser extends BaseEntity {
     @Schema(description = "真实姓名")
     private String realName;
     
+    // 🟢 新增字段
+    @Schema(description = "用户昵称")
+    private String nickname;
+    
     @Schema(description = "联系电话")
     private String phone;
     

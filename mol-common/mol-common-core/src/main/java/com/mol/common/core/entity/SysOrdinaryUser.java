@@ -39,7 +39,10 @@ public class SysOrdinaryUser extends BaseEntity {
     @Schema(description = "真实姓名")
     private String realName;
     
-    // [新增] 之前缺少的头像字段
+    // 🟢 新增字段
+    @Schema(description = "用户昵称")
+    private String nickname;
+    
     @Schema(description = "头像地址")
     private String avatar;
     
@@ -49,17 +52,11 @@ public class SysOrdinaryUser extends BaseEntity {
     @Schema(description = "本人手机号")
     private String phone;
     
-    /**
-     * 0: 学生, 1: 教职工
-     */
     @Schema(description = "人员类别 (0:学生 1:教职工)")
     private Integer userCategory;
     
-    /**
-     * 1: 男, 2: 女
-     */
-    @Schema(description = "性别 (1:男 2:女)")
-    private Integer sex;
+    @Schema(description = "性别 (0:男 1:女 2:未知)")
+    private String gender;
     
     // ----------- 归属信息 -----------
     
@@ -72,7 +69,7 @@ public class SysOrdinaryUser extends BaseEntity {
     @Schema(description = "所属班级 ID (仅学生)")
     private Long classId;
     
-    @Schema(description = "部门ID (教职工用)")
+    @Schema(description = "部门 ID (教职工用)")
     private Long deptId;
     
     // ----------- 详细档案信息 -----------

@@ -85,12 +85,14 @@ public class SysOrdinaryUserController {
         return R.ok(ordinaryUserService.saveUser(user));
     }
     
+    
     @Operation(summary = "修改用户信息")
     @SaCheckRole(value = {RoleConstants.SUPER_ADMIN, RoleConstants.DEPT_ADMIN}, mode = SaMode.OR)
     @PutMapping
     public R<Boolean> update(@RequestBody SysOrdinaryUser user) {
         return R.ok(ordinaryUserService.updateUser(user));
     }
+    
     
     @Operation(summary = "删除用户")
     @SaCheckRole(value = {RoleConstants.SUPER_ADMIN, RoleConstants.DEPT_ADMIN}, mode = SaMode.OR)
@@ -103,6 +105,7 @@ public class SysOrdinaryUserController {
         }
         return R.ok(result);
     }
+    
     
     // =================================================================================
     // 3. 核心功能：角色提权 (Grant)

@@ -12,7 +12,7 @@ import java.util.List;
 @Schema(description = "用户角色授权参数")
 public class UserRoleGrantDTO {
     
-    @Schema(description = "目标用户ID (如李小牧的 userId)")
+    @Schema(description = "目标用户 ID (如李小牧的 userId)")
     private Long userId;
     
     @Schema(description = "角色 ID 列表 (例如 [8] 代表辅导员)")

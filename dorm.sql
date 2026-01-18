@@ -856,6 +856,9 @@ CREATE TABLE `sys_admin_user` (
   `username` varchar(64) NOT NULL COMMENT '登录账号',
   `password` varchar(100) NOT NULL COMMENT '加密密码',
   `real_name` varchar(50) NOT NULL COMMENT '真实姓名',
+  `nickname` varchar(64) DEFAULT NULL COMMENT '用户昵称',
+  `phone` varchar(20) DEFAULT NULL COMMENT '联系电话',
+  `email` varchar(100) DEFAULT NULL COMMENT '电子邮箱',
   `avatar` varchar(255) DEFAULT NULL COMMENT '头像路径',
   `status` char(1) DEFAULT '0' COMMENT '状态: 0-正常 1-停用',
   `del_flag` char(1) DEFAULT '0' COMMENT '逻辑删除',
@@ -870,12 +873,12 @@ CREATE TABLE `sys_admin_user` (
 
 /*Data for the table `sys_admin_user` */
 
-insert  into `sys_admin_user`(`id`,`username`,`password`,`real_name`,`avatar`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(1,'admin','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','超级管理员',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(2,'dorm_admin_1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','海棠苑宿管阿姨',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(3,'dorm_admin_2','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','丁香苑宿管大叔',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(4,'college_sec_1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','计算机学院王书记',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(5,'repair_boss','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','后勤李工头',NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL);
+insert  into `sys_admin_user`(`id`,`username`,`password`,`real_name`,`nickname`,`phone`,`email`,`avatar`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'admin','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','超级管理员','超级管理员',NULL,NULL,NULL,'0','0','admin','2026-01-15 18:43:32','','2026-01-16 13:48:35',NULL),
+(2,'dorm_admin_1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','海棠苑宿管阿姨',NULL,NULL,NULL,NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'dorm_admin_2','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','丁香苑宿管大叔',NULL,NULL,NULL,NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,'college_sec_1','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','计算机学院王书记',NULL,NULL,NULL,NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,'repair_boss','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','后勤李工头',NULL,NULL,NULL,NULL,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_algorithm_config` */
 
@@ -1096,6 +1099,7 @@ CREATE TABLE `sys_ordinary_user` (
   `username` varchar(64) NOT NULL COMMENT '学号/工号 (唯一登录凭证)',
   `password` varchar(100) NOT NULL COMMENT '加密密码',
   `real_name` varchar(50) NOT NULL COMMENT '真实姓名',
+  `nickname` varchar(64) DEFAULT NULL COMMENT '用户昵称',
   `avatar` varchar(255) DEFAULT NULL COMMENT '头像路径',
   `user_category` int DEFAULT '0' COMMENT '类别: 0-学生 1-教职工',
   `sex` tinyint DEFAULT '1' COMMENT '性别: 1-男 2-女 (防刁民校验基准)',
@@ -1123,40 +1127,40 @@ CREATE TABLE `sys_ordinary_user` (
 
 /*Data for the table `sys_ordinary_user` */
 
-insert  into `sys_ordinary_user`(`id`,`username`,`password`,`real_name`,`avatar`,`user_category`,`sex`,`phone`,`id_card`,`ethnicity`,`campus_id`,`college_id`,`major_id`,`class_id`,`dept_id`,`residence_type`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
-(1,'2015JZG001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张教授',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(2,'2018JZG002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李辅导员',NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(3,'2019JZG003','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','赵保卫',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,3,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(4,'2020JZG004','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','孙会计',NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,4,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(5,'2021JZG005','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','周维修',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,2,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(6,'2022JZG006','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','吴外教',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,5,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(7,'2023JZG007','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','郑行政',NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(8,'2024JZG008','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王新讲师',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(9,'2024JZG009','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刘新讲师',NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(10,'2000JZG010','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','老院长',NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(11,'20240101','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张三',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(12,'20240102','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李四',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(13,'20240103','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王五',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(14,'20240104','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','赵六',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(15,'20240201','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小红',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(16,'20240202','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小兰',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(17,'20240203','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小美',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(18,'20240204','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小丽',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(19,'20250301','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Alice',NULL,0,2,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(20,'20250302','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Bob',NULL,0,1,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(21,'20250303','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Cindy',NULL,0,2,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(22,'20240401','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','铁柱',NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(23,'20240402','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','钢蛋',NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(24,'20240403','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','二狗',NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(25,'BAD001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刁民甲',NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'1','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(26,'BAD002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刁民乙',NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(27,'2023Y01','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','研一师兄',NULL,0,1,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(28,'2023Y02','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','研二师姐',NULL,0,2,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(29,'2023Y03','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李小牧',NULL,0,1,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(30,'FILL01','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人A',NULL,0,1,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(31,'FILL02','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人B',NULL,0,1,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(32,'FILL03','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人C',NULL,0,2,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
-(33,'FILL04','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人D',NULL,0,2,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL);
+insert  into `sys_ordinary_user`(`id`,`username`,`password`,`real_name`,`nickname`,`avatar`,`user_category`,`sex`,`phone`,`id_card`,`ethnicity`,`campus_id`,`college_id`,`major_id`,`class_id`,`dept_id`,`residence_type`,`status`,`del_flag`,`create_by`,`create_time`,`update_by`,`update_time`,`remark`) values 
+(1,'2015JZG001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张教授',NULL,NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(2,'2018JZG002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李辅导员',NULL,NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(3,'2019JZG003','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','赵保卫',NULL,NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,3,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(4,'2020JZG004','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','孙会计',NULL,NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,4,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(5,'2021JZG005','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','周维修',NULL,NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,2,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(6,'2022JZG006','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','吴外教',NULL,NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,5,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(7,'2023JZG007','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','郑行政',NULL,NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(8,'2024JZG008','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王新讲师',NULL,NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(9,'2024JZG009','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刘新讲师',NULL,NULL,1,2,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(10,'2000JZG010','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','老院长',NULL,NULL,1,1,NULL,NULL,'汉族',NULL,NULL,NULL,NULL,1,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(11,'20240101','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','张三',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(12,'20240102','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李四',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(13,'20240103','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','王五',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(14,'20240104','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','赵六',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(15,'20240201','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小红',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(16,'20240202','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小兰',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(17,'20240203','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小美',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(18,'20240204','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','小丽',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(19,'20250301','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Alice',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(20,'20250302','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Bob',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(21,'20250303','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','Cindy',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,2,3,4,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(22,'20240401','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','铁柱',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(23,'20240402','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','钢蛋',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(24,'20240403','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','二狗',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,3,4,6,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(25,'BAD001','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刁民甲',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,1,1,1,NULL,0,'1','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(26,'BAD002','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','刁民乙',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,1,1,2,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(27,'2023Y01','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','研一师兄',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(28,'2023Y02','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','研二师姐',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(29,'2023Y03','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','李小牧',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,1,2,3,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(30,'FILL01','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人A',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(31,'FILL02','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人B',NULL,NULL,0,1,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(32,'FILL03','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人C',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL),
+(33,'FILL04','$2a$10$fcVDpa5xQ0TqHnywFBCheu10/EqykWFJsbQrl5AWvPKEFYg009HwC','路人D',NULL,NULL,0,2,NULL,NULL,'汉族',NULL,5,5,8,NULL,0,'0','0','admin','2026-01-15 18:43:32','',NULL,NULL);
 
 /*Table structure for table `sys_role` */
 
@@ -1203,6 +1207,7 @@ CREATE TABLE `sys_user_role` (
 /*Data for the table `sys_user_role` */
 
 insert  into `sys_user_role`(`user_id`,`role_id`,`create_time`) values 
+(1,1,'2026-01-16 13:11:39'),
 (29,7,'2026-01-15 18:43:32');
 
 /*Table structure for table `sys_utility_price` */

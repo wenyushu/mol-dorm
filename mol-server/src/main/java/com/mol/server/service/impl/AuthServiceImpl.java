@@ -3,6 +3,7 @@ package com.mol.server.service.impl;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.BCrypt;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mol.common.core.entity.SysAdminUser;
@@ -44,6 +45,8 @@ public class AuthServiceImpl implements AuthService {
     private final SysOrdinaryUserMapper ordinaryUserMapper;
     private final SysUserRoleMapper userRoleMapper;
     private final SysRoleMapper roleMapper;
+    // 🟢 定义一个默认头像 (这里用了一个开源的免费头像，你也可以换成你项目里的静态资源)
+    private static final String DEFAULT_AVATAR = "https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png";
     
     // =========================================================================
     // 【关键修改】前缀必须与 StpInterfaceImpl 中的 TYPE 常量保持一致 (数字字符串)
@@ -57,39 +60,45 @@ public class AuthServiceImpl implements AuthService {
         // 1. 基础参数校验
         String username = loginBody.getUsername();
         String password = loginBody.getPassword();
+
+        // 🛡️ 防刁民：如果前端没传 userType，尝试自动推断 (根据 username 是否纯数字)
+        // 优先信赖前端传值
         String userType = loginBody.getUserType();
-        
-        if (ObjectUtil.hasEmpty(username, password, userType)) {
-            throw new ServiceException("账号、密码或用户类型不能为空");
+        if (ObjectUtil.hasEmpty(username, password)) {
+            throw new ServiceException("账号或密码不能为空");
         }
         
         Long originalUserId; // 数据库真实 ID (例如 1001)
         String loginId;      // Sa-Token 登录 ID (例如 "0:1001")
-        String realName;
-        String avatar;
+        String realName;     // 真实姓名
+        String nickname;     // 昵称
+        String avatar;       // 头像 url
         String roleKey;      // 返回给前端展示用的角色标识
         
         // 2. 根据用户类型查不同的表
+        // ================== A. 管理员登录 ==================
         if ("admin".equals(userType)) {
-            // ================== 管理员登录逻辑 ==================
             SysAdminUser admin = adminUserMapper.selectOne(new LambdaQueryWrapper<SysAdminUser>()
                     .eq(SysAdminUser::getUsername, username));
             
-            if (admin == null) throw new ServiceException("管理员账号不存在");
-            if (!BCrypt.checkpw(password, admin.getPassword())) throw new ServiceException("密码错误");
-            if ("1".equals(admin.getStatus())) throw new ServiceException("账号已停用，请联系上级");
+            if (admin == null) throw new ServiceException("账号或密码错误"); // 模糊报错
+            if (!BCrypt.checkpw(password, admin.getPassword())) throw new ServiceException("账号或密码错误");
+            if ("1".equals(admin.getStatus())) throw new ServiceException("账号已停用");
             
             originalUserId = admin.getId();
-            // 构建带前缀的 ID (0:1001)
             loginId = PREFIX_ADMIN + originalUserId;
-            
             realName = admin.getRealName();
             avatar = admin.getAvatar();
             
-            // 查询角色用于前端展示 (非鉴权用，鉴权走 StpInterface)
+            // 1. 处理昵称：如果有昵称用昵称，没有就用真实姓名
+            nickname = StrUtil.isNotBlank(admin.getNickname()) ? admin.getNickname() : admin.getRealName();
+            
+            // 2. 处理头像：如果有头像用头像，没有就用默认图
+            avatar = StrUtil.isNotBlank(admin.getAvatar()) ? admin.getAvatar() : DEFAULT_AVATAR;
+            
+            // 查询角色用于前端展示
             List<SysUserRole> userRoles = userRoleMapper.selectList(new LambdaQueryWrapper<SysUserRole>()
                     .eq(SysUserRole::getUserId, originalUserId));
-            
             if (CollUtil.isNotEmpty(userRoles)) {
                 List<Long> roleIds = userRoles.stream().map(SysUserRole::getRoleId).collect(Collectors.toList());
                 List<SysRole> roles = roleMapper.selectByIds(roleIds);
@@ -97,46 +106,54 @@ public class AuthServiceImpl implements AuthService {
             } else {
                 roleKey = "guest";
             }
-            
-        } else {
-            // ================== 普通用户登录逻辑 ==================
+        }
+        // ================== B. 普通用户登录 (学生/教工) ==================
+        else {
             SysOrdinaryUser user = ordinaryUserMapper.selectOne(new LambdaQueryWrapper<SysOrdinaryUser>()
                     .eq(SysOrdinaryUser::getUsername, username));
             
-            if (user == null) throw new ServiceException("学号/工号不存在");
-            if (!BCrypt.checkpw(password, user.getPassword())) throw new ServiceException("密码错误");
-            if ("1".equals(user.getStatus())) throw new ServiceException("账号已停用，请联系宿管");
+            if (user == null) throw new ServiceException("账号 or 密码错误");
+            if (!BCrypt.checkpw(password, user.getPassword())) throw new ServiceException("账号 or 密码错误");
+            if ("1".equals(user.getStatus())) throw new ServiceException("账号已封禁，请联系宿管");
             
             originalUserId = user.getId();
-            // 构建带前缀的 ID (1:2005)
             loginId = PREFIX_ORDINARY + originalUserId;
-            
             realName = user.getRealName();
-            avatar = null; // 普通用户暂无头像
+            avatar = user.getAvatar();
             
-            // 简单判断角色给前端展示
+            // 🟢 处理昵称
+            nickname = StrUtil.isNotBlank(user.getNickname()) ? user.getNickname() : user.getRealName();
+            
+            // 🟢 处理头像
+            avatar = StrUtil.isNotBlank(user.getAvatar()) ? user.getAvatar() : DEFAULT_AVATAR;
+            
+            // 🛡️ 防刁民，先简单判断角色
             roleKey = (user.getUserCategory() != null && user.getUserCategory() == 1) ? "teacher" : "student";
         }
         
         // 3. 执行 Sa-Token 登录
-        // 这一步会生成 Token，并与 loginId ("0:1001") 绑定
         StpUtil.login(loginId);
-        
-        // 4. 【关键】缓存关键信息到 Session
-        // LoginHelper.getUserId() 强依赖这里的 "originalId"
+
+        // 4. 写入 Session (LoginHelper 强依赖)
         StpUtil.getSession().set("originalId", originalUserId);
         StpUtil.getSession().set("name", realName);
         StpUtil.getSession().set("role", roleKey);
-        StpUtil.getSession().set("type", userType);
-        
-        // 5. 组装返回结果
-        LoginVO vo = new LoginVO();
-        vo.setToken(StpUtil.getTokenValue());
-        vo.setUserId(originalUserId); // 返回给前端的是原始ID，前端不感知前缀
-        vo.setRealName(realName);
-        vo.setRole(roleKey);
-        vo.setAvatar(avatar);
-        
-        return vo;
+
+        // 5. 组装 VO (Token + 用户信息)
+        return LoginVO.builder()
+                .tokenName(StpUtil.getTokenName())
+                .tokenValue(StpUtil.getTokenValue())
+                .userId(originalUserId)
+                .realName(realName) // 真实姓名
+                .nickname(nickname) // 昵称
+                .role(roleKey)
+                .avatar(avatar)
+                .build();
+    }
+    
+    // 注销当前登录状态
+    @Override
+    public void logout() {
+        StpUtil.logout();
     }
 }
