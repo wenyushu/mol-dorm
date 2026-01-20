@@ -1,7 +1,9 @@
 package com.mol.common.core.entity;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.annotation.*;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
@@ -26,6 +28,9 @@ public class SysOrdinaryUser extends BaseEntity {
     @Serial
     private static final long serialVersionUID = 1L;
     
+    // 定义一个常量(头像 url)，方便以后统一修改
+    public static final String DEFAULT_AVATAR = "https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png";
+    
     @Schema(description = "主键 ID")
     @TableId(type = IdType.AUTO)
     private Long id;
@@ -39,23 +44,42 @@ public class SysOrdinaryUser extends BaseEntity {
     @Schema(description = "真实姓名")
     private String realName;
     
-    // 🟢 新增字段
     @Schema(description = "用户昵称")
     private String nickname;
     
     @Schema(description = "头像地址")
     private String avatar;
+    /**
+     * 重写 getAvatar 方法 (Lombok 的 @Data 会生成默认的，我们需要覆盖它)
+     * 作用：如果数据库里存的是 null 或 空串，获取时自动返回默认头像
+     */
+    public String getAvatar() {
+        if (StrUtil.isBlank(this.avatar)) {
+            return DEFAULT_AVATAR;
+        }
+        return this.avatar;
+    }
     
+    
+    // 🟢 1. 身份证 (非空)
+    @NotBlank(message = "身份证号不能为空")
     @Schema(description = "身份证号")
     private String idCard;
     
+    // 🟢 2. 手机号 (非空)
+    @NotBlank(message = "手机号不能为空")
     @Schema(description = "本人手机号")
     private String phone;
     
+    // 🟢 3. 账户类别 (非空)
+    @NotNull(message = "人员类别不能为空")
     @Schema(description = "人员类别 (0:学生 1:教职工)")
     private Integer userCategory;
     
-    @Schema(description = "性别 (0:男 1:女 2:未知)")
+    // 🟢 4. 性别：强制非空，只能是 0 或 1
+    @NotNull(message = "性别不能为空")
+    @Pattern(regexp = "[01]", message = "性别格式错误 (0-女 1-男)")
+    @Schema(description = "性别 (0-女 1-男)")
     private String gender;
     
     // ----------- 归属信息 -----------
@@ -74,9 +98,11 @@ public class SysOrdinaryUser extends BaseEntity {
     
     // ----------- 详细档案信息 -----------
     
+    @NotBlank(message = "民族不能为空")
     @Schema(description = "民族 (如: 汉族)")
     private String ethnicity;
     
+    @NotBlank(message = "籍贯不能为空")
     @Schema(description = "籍贯 (如: 江苏南京)")
     private String hometown;
     
@@ -94,12 +120,15 @@ public class SysOrdinaryUser extends BaseEntity {
     
     // ----------- 紧急联系人 -----------
     
+    @NotBlank(message = "紧急联系人不能为空")
     @Schema(description = "紧急联系人姓名")
     private String emergencyContact;
     
+    @NotBlank(message = "紧急联系电话不能为空")
     @Schema(description = "紧急联系人电话")
     private String emergencyPhone;
     
+    @NotBlank(message = "紧急联系人关系不能为空")
     @Schema(description = "紧急联系人关系 (如: 父子)")
     private String emergencyRelation;
     
@@ -120,6 +149,7 @@ public class SysOrdinaryUser extends BaseEntity {
     /**
      * 帐号状态 (0:正常 1:停用)
      */
+    @NotBlank(message = "账号状态不能为空")
     @Schema(description = "帐号状态 (0:正常 1:停用)")
     private String status;
     

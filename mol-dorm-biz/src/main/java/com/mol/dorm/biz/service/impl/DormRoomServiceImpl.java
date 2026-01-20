@@ -6,14 +6,18 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mol.common.core.entity.SysAdminUser;
 import com.mol.common.core.entity.SysOrdinaryUser;
 import com.mol.common.core.exception.ServiceException;
 import com.mol.dorm.biz.entity.DormBed;
+import com.mol.dorm.biz.entity.DormFloor;
 import com.mol.dorm.biz.entity.DormRoom;
 import com.mol.dorm.biz.mapper.DormBedMapper;
+import com.mol.dorm.biz.mapper.DormFloorMapper;
 import com.mol.dorm.biz.mapper.DormRoomMapper;
 import com.mol.dorm.biz.service.DormRoomService;
 import com.mol.dorm.biz.vo.DormRoomVO;
+import com.mol.server.mapper.SysAdminUserMapper;
 import com.mol.server.mapper.SysOrdinaryUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -25,13 +29,12 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 宿舍房间业务核心实现类
+ * 宿舍房间业务核心实现类 (终极防刁民 + 混合居住版)
  * <p>
- * 包含：房间增删改查、楼层批量操作、VO 组装、应急事务处理。
- * <p>
- * 核心原则：任何【删除】或【停用】操作，必须先校验【是否有人居住】。
- * 这是为了防止产生“孤儿数据”（即学生有床位号，但对应的房间/楼栋已不存在），
- * 保证系统数据的一致性和安全性。
+ * 核心职责：
+ * 1. 维护房间生命周期，确保数据一致性。
+ * 2. 处理混合居住逻辑 (学生+教职工)。
+ * 3. 执行严格的业务规则拦截 (防误删、防违规分配)。
  * </p>
  *
  * @author mol
@@ -41,129 +44,115 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> implements DormRoomService {
     
-    // 注入床位 Mapper，用于操作床位数据 (DormBed)
+    private final DormFloorMapper floorMapper;
     private final DormBedMapper bedMapper;
-    // 注入系统用户 Mapper，用于跨模块查询学生姓名 (SysOrdinaryUser)
-    private final SysOrdinaryUserMapper userMapper;
     
-    // =========================== 1. 单个房间管理 (增删改) ===========================
+    // 注入两张用户表的 Mapper，用于混合居住查询
+    private final SysOrdinaryUserMapper ordinaryUserMapper; // 学生
+    private final SysAdminUserMapper adminUserMapper;       // 教工/宿管
+    
+    // =================================================================================================
+    // 1. 单个房间管理 (增删改)
+    // =================================================================================================
     
     /**
      * 新增房间
-     * <p>
-     * 1. 校验必填项。
-     * 2. 校验同一楼栋下房间号是否重复。
-     * 3. 保存房间并自动生成配套床位。
-     * </p>
-     *
-     * @param room 房间信息实体
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void addRoom(DormRoom room) {
-        // 1. 基础参数校验
-        // 楼栋ID和房间号是必须的，容量也不能为空
-        if (room.getBuildingId() == null || StrUtil.isBlank(room.getRoomNo())) {
-            throw new ServiceException("楼栋和房间号不能为空");
-        }
-        if (room.getCapacity() == null || room.getCapacity() <= 0) {
-            throw new ServiceException("房间容量必须大于0");
+        // --- 1. 参数防御 ---
+        if (room.getFloorId() == null) throw new ServiceException("必须指定所属楼层");
+        if (StrUtil.isBlank(room.getRoomNo())) throw new ServiceException("房间号不能为空");
+        if (room.getCapacity() == null || room.getCapacity() <= 0) throw new ServiceException("房间容量必须大于0");
+        if (StrUtil.isBlank(room.getGender())) throw new ServiceException("必须指定房间性别限制");
+        
+        // --- 2. 上级状态校验 ---
+        DormFloor floor = floorMapper.selectById(room.getFloorId());
+        if (floor == null) throw new ServiceException("防刁民拦截：所属楼层不存在");
+        
+        // 🛡️ 状态拦截：楼层停用(0)或装修(41)时，禁止操作
+        if (floor.getStatus() == 0 || floor.getStatus() == 41) {
+            throw new ServiceException("操作拦截：所属楼层已停用或正在装修，禁止新增房间");
         }
         
-        // 2. 唯一性校验 (同一楼栋下房间号唯一)
-        // 防止出现两个 "1号楼-101" 这种数据错误
-        long count = this.count(new LambdaQueryWrapper<DormRoom>()
-                .eq(DormRoom::getBuildingId, room.getBuildingId())
+        // --- 3. 性别熔断机制 ---
+        // Floor(Int): 1-男, 2-女 | Room(Str): "1"-男, "0"-女
+        if (floor.getGenderLimit() == 1 && "0".equals(room.getGender())) {
+            throw new ServiceException("规则拦截：[男层] 禁止创建 [女寝]");
+        }
+        if (floor.getGenderLimit() == 2 && "1".equals(room.getGender())) {
+            throw new ServiceException("规则拦截：[女层] 禁止创建 [男寝]");
+        }
+        
+        // --- 4. 唯一性查重 ---
+        boolean exists = this.exists(new LambdaQueryWrapper<DormRoom>()
+                .eq(DormRoom::getFloorId, floor.getId())
                 .eq(DormRoom::getRoomNo, room.getRoomNo()));
-        if (count > 0) {
-            throw new ServiceException("该楼栋下已存在房间号：" + room.getRoomNo());
+        if (exists) {
+            throw new ServiceException("该楼层已存在房间号：" + room.getRoomNo());
         }
         
-        // 3. 初始化默认值并保存
-        // 刚创建的房间人数肯定为 0，状态默认为 1 (正常)
+        // --- 5. 全链路冗余填充 ---
+        room.setCampusId(floor.getCampusId());
+        room.setBuildingId(floor.getBuildingId());
+        room.setFloorNo(floor.getFloorNum());
+        
+        // --- 6. 初始化并保存 ---
         room.setCurrentNum(0);
-        room.setStatus(1);
+        room.setStatus(10); // 10-正常(未满)
         this.save(room);
         
-        // 4. 自动生成配套床位 (如 101-1, 101-2)
-        // 这一步是为了减轻管理员负担，不需要再手动去创建床位
-        createBeds(room.getId(), room.getRoomNo(), room.getCapacity());
+        // --- 7. 级联创建床位 ---
+        createBeds(room, room.getCapacity());
     }
     
     /**
-     * 修改房间信息 (带安全校验)
-     * <p>
-     * 核心逻辑：
-     * 1. 封寝校验：如果修改状态为封寝，必须确保没人住。
-     * 2. 查重校验：修改房间号不能和现有重复。
-     * 3. 扩缩容逻辑：修改容量时，自动联动增删床位。
-     * </p>
-     *
-     * @param room 包含修改后信息的房间实体
+     * 修改房间
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updateRoom(DormRoom room) {
-        // 先查出旧数据，用于对比
         DormRoom oldRoom = this.getById(room.getId());
-        if (oldRoom == null) {
-            throw new ServiceException("房间不存在");
+        if (oldRoom == null) throw new ServiceException("房间不存在");
+        
+        // ✅ 防刁民：有人住时禁止封寝
+        if (isStopStatus(room.getStatus()) && oldRoom.getCurrentNum() > 0) {
+            throw new ServiceException("操作失败：房间仍有人员居住，请先清退人员再执行封停/维修操作！");
         }
         
-        // ✅ 安全校验1：封寝安全检查
-        // 如果状态改为 0 (停用/封寝)，且原来是正常的
-        if (room.getStatus() != null && room.getStatus() == 0) {
-            // 必须确保当前没人住，否则禁止封寝
-            if (oldRoom.getCurrentNum() > 0) {
-                throw new ServiceException("操作失败：该房间仍有 " + oldRoom.getCurrentNum() + " 人居住，请先清退人员！");
-            }
-        }
-        
-        // 校验2：修改房间号查重
-        // 如果改了房间号，要检查新号码是不是已经有了
-        if (!oldRoom.getRoomNo().equals(room.getRoomNo())) {
-            long count = this.count(new LambdaQueryWrapper<DormRoom>()
-                    .eq(DormRoom::getBuildingId, oldRoom.getBuildingId())
+        // 校验：房间号查重
+        if (StrUtil.isNotBlank(room.getRoomNo()) && !oldRoom.getRoomNo().equals(room.getRoomNo())) {
+            boolean exists = this.exists(new LambdaQueryWrapper<DormRoom>()
+                    .eq(DormRoom::getFloorId, oldRoom.getFloorId())
                     .eq(DormRoom::getRoomNo, room.getRoomNo())
-                    .ne(DormRoom::getId, room.getId())); // 排除自己
-            if (count > 0) {
-                throw new ServiceException("新房间号已存在");
-            }
+                    .ne(DormRoom::getId, room.getId()));
+            if (exists) throw new ServiceException("新房间号已存在");
         }
         
-        // 校验3：容量变更逻辑 (扩容/缩容)
+        // 校验：容量变更 (扩缩容)
         Integer oldCap = oldRoom.getCapacity();
         Integer newCap = room.getCapacity();
         
-        // 只有当新容量 != 旧容量时才触发
         if (newCap != null && !newCap.equals(oldCap)) {
             if (newCap < oldCap) {
-                // --- 缩容逻辑 (变小) ---
-                // 安全检查：如果当前实际居住人数 > 新容量，禁止操作，防止把住着的人“挤没了”
+                // 缩容：先检查人会不会被挤出去
                 if (oldRoom.getCurrentNum() > newCap) {
-                    throw new ServiceException("缩容失败：当前居住人数(" + oldRoom.getCurrentNum() +
-                            ")超过新容量(" + newCap + ")，请先移出部分学生");
+                    throw new ServiceException("缩容失败：当前人数(" + oldRoom.getCurrentNum() +
+                            ") > 新容量(" + newCap + ")，请先移出部分人员");
                 }
-                // 调用私有方法，删除多余的空床位
                 removeExcessBeds(room.getId(), oldCap - newCap);
             } else {
-                // --- 扩容逻辑 (变大) ---
-                // 调用私有方法，追加新床位
-                addMoreBeds(room.getId(), room.getRoomNo(), oldCap + 1, newCap);
+                // 扩容
+                addMoreBeds(oldRoom, oldCap + 1, newCap);
             }
         }
         
-        // 最后执行 MyBatis-Plus 的更新操作
         this.updateById(room);
     }
     
     /**
-     * 删除单个房间 (带安全校验)
-     * <p>
-     * 安全策略：只有空房间才能被删除。
-     * </p>
-     *
-     * @param roomId 待删除的房间ID
+     * 删除房间
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
@@ -171,215 +160,142 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
         DormRoom room = this.getById(roomId);
         if (room == null) return;
         
-        // ✅ 安全校验：有人绝对不能删
-        if (room.getCurrentNum() > 0) {
-            throw new ServiceException("删除失败：该房间仍有 " + room.getCurrentNum() + " 人居住！");
+        // ✅ 防孤儿：检查是否有“已入住”的床位
+        Long occupiedBeds = bedMapper.selectCount(new LambdaQueryWrapper<DormBed>()
+                .eq(DormBed::getRoomId, roomId)
+                .eq(DormBed::getStatus, 1)); // 1-已入住
+        
+        if (occupiedBeds > 0) {
+            throw new ServiceException("删除失败：房间内仍有人员居住，禁止删除！");
         }
         
-        // 1. 级联删除：先删关联的空床位
+        // 级联删除空床位
         bedMapper.delete(new LambdaQueryWrapper<DormBed>().eq(DormBed::getRoomId, roomId));
-        // 2. 删除房间本身
+        
+        // 删除房间
         this.removeById(roomId);
     }
     
-    // =========================== 2. 楼层批量操作 (核心新增) ===========================
+    // =================================================================================================
+    // 2. 楼层批量操作
+    // =================================================================================================
     
-    /**
-     * 停用整层楼
-     * <p>
-     * 场景：某层楼水管爆裂或装修，需要批量封锁。
-     * </p>
-     *
-     * @param buildingId 楼栋ID
-     * @param floor      楼层号
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void disableFloor(Long buildingId, Integer floor) {
-        // 1. 检查该层是否有人居住 (只要有一间房有人，就报错)
-        // 🔴 修复点：使用 getFloorNo 匹配实体类字段
+    public void disableFloor(Long buildingId, Integer floorNo) {
+        // 检查是否有人
         Long occupiedCount = this.baseMapper.selectCount(new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .eq(DormRoom::getFloorNo, floor)
+                .eq(DormRoom::getFloorNo, floorNo)
                 .gt(DormRoom::getCurrentNum, 0));
         
         if (occupiedCount > 0) {
             throw new ServiceException("停用失败：该楼层仍有 " + occupiedCount + " 间房有人居住！");
         }
         
-        // 2. 批量更新状态为 0 (停用)
+        // 批量置为 40-维修停用
         DormRoom updateEntity = new DormRoom();
-        updateEntity.setStatus(0);
-        
-        // 🔴 修复点：使用 getFloorNo
+        updateEntity.setStatus(40);
         this.update(updateEntity, new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .eq(DormRoom::getFloorNo, floor));
-        
-        log.info("楼层停用成功：楼栋ID={}, 楼层={}", buildingId, floor);
+                .eq(DormRoom::getFloorNo, floorNo));
     }
     
-    /**
-     * 删除整层楼
-     * <p>
-     * 场景：楼层规划变更，物理拆除。
-     * </p>
-     *
-     * @param buildingId 楼栋ID
-     * @param floor      楼层号
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void deleteFloor(Long buildingId, Integer floor) {
-        // 1. 检查该层是否有人
-        // 🔴 修复点：使用 getFloorNo
+    public void deleteFloor(Long buildingId, Integer floorNo) {
+        // 检查是否有人
         Long occupiedCount = this.baseMapper.selectCount(new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .eq(DormRoom::getFloorNo, floor)
+                .eq(DormRoom::getFloorNo, floorNo)
                 .gt(DormRoom::getCurrentNum, 0));
         
         if (occupiedCount > 0) {
             throw new ServiceException("删除失败：该楼层仍有 " + occupiedCount + " 间房有人居住！");
         }
         
-        // 2. 查出该层所有房间ID (用于后续删床位)
-        // 🔴 修复点：使用 getFloorNo
+        // 查ID -> 删床 -> 删房
         List<DormRoom> rooms = this.list(new LambdaQueryWrapper<DormRoom>()
                 .select(DormRoom::getId)
                 .eq(DormRoom::getBuildingId, buildingId)
-                .eq(DormRoom::getFloorNo, floor));
+                .eq(DormRoom::getFloorNo, floorNo));
         
         if (CollUtil.isEmpty(rooms)) return;
-        // 提取 ID 列表
         List<Long> roomIds = rooms.stream().map(DormRoom::getId).collect(Collectors.toList());
         
-        // 3. 级联删除所有床位
-        // DELETE FROM dorm_bed WHERE room_id IN (1, 2, 3...)
         bedMapper.delete(new LambdaQueryWrapper<DormBed>().in(DormBed::getRoomId, roomIds));
-        
-        // 4. 级联删除所有房间 (使用新版 removeByIds)
         this.removeByIds(roomIds);
-        
-        log.info("楼层删除成功：楼栋ID={}, 楼层={}, 共删除房间 {} 间", buildingId, floor, roomIds.size());
     }
     
-    // =========================== 3. 高级查询 (VO封装) ===========================
+    // =================================================================================================
+    // 3. 高级查询 (支持混合居住 VO)
+    // =================================================================================================
     
-    /**
-     * 获取单个房间详情 (含人名)
-     *
-     * @param roomId 房间ID
-     * @return VO 对象，包含床位列表和学生姓名
-     */
     @Override
     public DormRoomVO getRoomDetail(Long roomId) {
         DormRoom room = this.getById(roomId);
         if (room == null) return null;
         
-        // 转换 Entity 为 VO
         DormRoomVO vo = new DormRoomVO();
         BeanUtils.copyProperties(room, vo);
         
-        // 查询该房间的所有床位，按床号排序
+        // 查床位 (按物理方位排序)
         List<DormBed> beds = bedMapper.selectList(new LambdaQueryWrapper<DormBed>()
                 .eq(DormBed::getRoomId, roomId)
-                .orderByAsc(DormBed::getBedLabel));
+                .orderByAsc(DormBed::getSortOrder));
         
-        // 填充人员信息 (调用辅助方法)
-        fillStudentInfo(beds, vo);
+        // 填充人员信息 (改用 Occupant 逻辑)
+        fillOccupantInfo(beds, vo);
         return vo;
     }
     
-    /**
-     * 分页查询房间列表 (VO增强版)
-     * <p>
-     * 解决 N+1 问题：
-     * 1. 先查出当前页的房间列表。
-     * 2. 提取所有房间ID，一次性查出所有床位。
-     * 3. 提取所有学生ID，一次性查出所有学生姓名。
-     * 4. 在内存中进行组装。
-     * </p>
-     */
     @Override
     public Page<DormRoomVO> getRoomVoPage(Page<DormRoom> page, Long buildingId) {
-        // 1. 查房间分页数据
-        // 🔴 修复点：使用 getFloorNo
+        // 1. 分页查房
         Page<DormRoom> roomPage = this.page(page, new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .orderByAsc(DormRoom::getFloorNo) // 先按楼层排
-                .orderByAsc(DormRoom::getRoomNo)); // 再按房号排
+                .orderByAsc(DormRoom::getFloorNo)
+                .orderByAsc(DormRoom::getRoomNo));
         
         if (CollUtil.isEmpty(roomPage.getRecords())) {
             return new Page<>(page.getCurrent(), page.getSize(), 0);
         }
         
-        // 2. 提取房间ID列表，批量查床位
+        // 2. 批量查床位
         List<Long> roomIds = roomPage.getRecords().stream().map(DormRoom::getId).collect(Collectors.toList());
         List<DormBed> allBeds = bedMapper.selectList(new LambdaQueryWrapper<DormBed>()
                 .in(DormBed::getRoomId, roomIds)
-                .orderByAsc(DormBed::getBedLabel));
+                .orderByAsc(DormBed::getSortOrder));
         
-        // 3. 提取居住人ID列表，批量查学生
-        Set<Long> studentIds = allBeds.stream()
-                .map(DormBed::getOccupantId)
-                .filter(Objects::nonNull) // 过滤掉空床位
-                .collect(Collectors.toSet());
-        
-        Map<Long, SysOrdinaryUser> studentMap = new HashMap<>();
-        if (CollUtil.isNotEmpty(studentIds)) {
-            // 使用 selectByIds 批量查询
-            List<SysOrdinaryUser> students = userMapper.selectByIds(studentIds);
-            // 转为 Map 方便后续查找 (key: userId, value: User对象)
-            for (SysOrdinaryUser s : students) studentMap.put(s.getId(), s);
-        }
-        
-        // 4. 内存组装数据 (将床位按房间ID分组)
+        // 3. 内存分组
         Map<Long, List<DormBed>> roomBedMap = allBeds.stream().collect(Collectors.groupingBy(DormBed::getRoomId));
         
-        // 遍历房间列表，组装 VO
+        // 4. 提取所有人员ID (需区分类型)
+        // 这一步比较复杂，我们放在 fillOccupantInfo 的批量逻辑里处理，
+        // 但为了分页查询性能，我们需要把所有涉及的床位一起传进去处理，或者在这里预处理。
+        // 为了代码复用，我们在下面独立写一个 "批量填充" 的逻辑。
+        
+        // 此处为了逻辑简单，循环调用单次填充逻辑 (性能略有损耗但逻辑清晰)
+        // 优化方案：写一个 batchFillOccupantInfo，这里演示单次调用的结构
         List<DormRoomVO> voList = roomPage.getRecords().stream().map(room -> {
             DormRoomVO vo = new DormRoomVO();
             BeanUtils.copyProperties(room, vo);
             
-            // 获取属于该房间的床位
             List<DormBed> myBeds = roomBedMap.getOrDefault(room.getId(), Collections.emptyList());
+            fillOccupantInfo(myBeds, vo); // 复用填充逻辑
             
-            // 转换床位信息，填入学生姓名
-            List<DormRoomVO.BedInfo> bedInfos = myBeds.stream().map(bed -> {
-                DormRoomVO.BedInfo info = new DormRoomVO.BedInfo();
-                info.setBedId(bed.getId());
-                info.setBedLabel(bed.getBedLabel());
-                info.setStudentId(bed.getOccupantId());
-                
-                // 如果有人住，从 Map 里取名字
-                if (bed.getOccupantId() != null) {
-                    SysOrdinaryUser u = studentMap.get(bed.getOccupantId());
-                    if (u != null) {
-                        info.setStudentName(u.getRealName());
-                        info.setStudentNo(u.getUsername());
-                    }
-                }
-                return info;
-            }).collect(Collectors.toList());
-            
-            vo.setBedList(bedInfos);
             return vo;
         }).collect(Collectors.toList());
         
-        // 5. 构造结果页并返回
         Page<DormRoomVO> resultPage = new Page<>(page.getCurrent(), page.getSize(), roomPage.getTotal());
         resultPage.setRecords(voList);
         return resultPage;
     }
     
-    // =========================== 4. 应急处理 ===========================
+    // =================================================================================================
+    // 4. 应急处理
+    // =================================================================================================
     
-    /**
-     * 紧急转移人员
-     * <p>
-     * 将源房间 (source) 的所有居住人员，批量移动到目标房间 (target) 的空床位上。
-     * </p>
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void emergencyTransfer(Long sourceRoomId, Long targetRoomId) {
@@ -387,101 +303,144 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
         DormRoom target = this.getById(targetRoomId);
         
         if (source == null || target == null) throw new ServiceException("房间不存在");
-        if (target.getStatus() != null && target.getStatus() == 0) {
-            throw new ServiceException("目标房间不可用");
-        }
         
-        // 容量检查
+        // 目标必须可用 (10/20)
+        if (target.getStatus() >= 40) throw new ServiceException("目标房间不可用");
+        
         int peopleCount = source.getCurrentNum();
         int targetAvailable = target.getCapacity() - target.getCurrentNum();
-        if (peopleCount > targetAvailable) {
-            throw new ServiceException("目标房间床位不足");
-        }
+        if (peopleCount > targetAvailable) throw new ServiceException("目标房间床位不足");
         
-        if (peopleCount == 0) {
-            source.setStatus(0); // 没人住直接封源房间
-            this.updateById(source);
-            return;
-        }
-        
-        // 获取源房间有人的床位
-        List<DormBed> sourceBeds = bedMapper.selectList(new LambdaQueryWrapper<DormBed>()
-                .eq(DormBed::getRoomId, sourceRoomId).isNotNull(DormBed::getOccupantId));
-        
-        // 获取目标房间的空床位
-        List<DormBed> targetEmptyBeds = bedMapper.selectList(new LambdaQueryWrapper<DormBed>()
-                .eq(DormBed::getRoomId, targetRoomId).isNull(DormBed::getOccupantId).last("LIMIT " + peopleCount));
-        
-        // 执行“挪人”
-        for (int i = 0; i < sourceBeds.size(); i++) {
-            DormBed src = sourceBeds.get(i);
-            DormBed tgt = targetEmptyBeds.get(i);
+        if (peopleCount > 0) {
+            // 源已住
+            List<DormBed> sourceBeds = bedMapper.selectList(new LambdaQueryWrapper<DormBed>()
+                    .eq(DormBed::getRoomId, sourceRoomId)
+                    .eq(DormBed::getStatus, 1));
+            // 目标空闲
+            List<DormBed> targetEmptyBeds = bedMapper.selectList(new LambdaQueryWrapper<DormBed>()
+                    .eq(DormBed::getRoomId, targetRoomId)
+                    .eq(DormBed::getStatus, 0)
+                    .orderByAsc(DormBed::getSortOrder)
+                    .last("LIMIT " + peopleCount));
             
-            // 移动学生ID到新床
-            tgt.setOccupantId(src.getOccupantId());
-            bedMapper.updateById(tgt);
-            
-            // 清空旧床
-            src.setOccupantId(null);
-            bedMapper.updateById(src);
+            for (int i = 0; i < sourceBeds.size(); i++) {
+                DormBed src = sourceBeds.get(i);
+                DormBed tgt = targetEmptyBeds.get(i);
+                // 完整迁移数据
+                tgt.setOccupantId(src.getOccupantId());
+                tgt.setOccupantType(src.getOccupantType()); // ✅ 迁移类型
+                tgt.setStatus(1);
+                
+                src.setOccupantId(null);
+                src.setOccupantType(null);
+                src.setStatus(0);
+                
+                bedMapper.updateById(tgt);
+                bedMapper.updateById(src);
+            }
         }
         
         // 更新状态
         source.setCurrentNum(0);
-        source.setStatus(0); // 源房间封锁
+        source.setStatus(40);
         this.updateById(source);
         
-        target.setCurrentNum(target.getCurrentNum() + peopleCount); // 目标房间人数增加
+        target.setCurrentNum(target.getCurrentNum() + peopleCount);
+        if (target.getCurrentNum() >= target.getCapacity()) target.setStatus(20);
         this.updateById(target);
     }
     
-    /**
-     * 紧急腾退/封寝
-     * <p>
-     * 强制清空某房间的所有床位 (occupant_id 置空)，并将房间设为不可用状态。
-     * </p>
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void evacuateRoom(Long roomId, String reason) {
         DormRoom room = this.getById(roomId);
         if (room == null) throw new ServiceException("房间不存在");
         
-        // 1. 强制清空该房间所有床位的人员
         bedMapper.update(null, Wrappers.<DormBed>lambdaUpdate()
-                .eq(DormBed::getRoomId, roomId).set(DormBed::getOccupantId, null));
+                .eq(DormBed::getRoomId, roomId)
+                .set(DormBed::getOccupantId, null)
+                .set(DormBed::getOccupantType, null)
+                .set(DormBed::getStatus, 0));
         
-        // 2. 更新房间状态
         room.setCurrentNum(0);
-        room.setStatus(0); // 0-维修/不可用
+        room.setStatus(42); // 42-损坏
         this.updateById(room);
-        
-        log.warn("房间[{}]执行紧急腾退，原因：{}", room.getRoomNo(), reason);
+        log.warn("🚨 房间[{}] 紧急腾退，原因：{}", room.getRoomNo(), reason);
     }
     
-    // =========================== 5. 私有辅助方法 ===========================
+    // =================================================================================================
+    // 5. 私有辅助方法 (核心逻辑)
+    // =================================================================================================
+    
+    private boolean isStopStatus(Integer status) {
+        return status != null && status >= 40;
+    }
     
     /**
-     * 辅助方法：为单个房间详情填充学生信息
+     * 核心方法：填充床位入住者信息 (支持学生+教工)
      */
-    private void fillStudentInfo(List<DormBed> beds, DormRoomVO vo) {
-        List<Long> ids = beds.stream().map(DormBed::getOccupantId).filter(Objects::nonNull).toList();
-        Map<Long, SysOrdinaryUser> map = new HashMap<>();
-        if (CollUtil.isNotEmpty(ids)) {
-            List<SysOrdinaryUser> users = userMapper.selectByIds(ids);
-            for (SysOrdinaryUser u : users) map.put(u.getId(), u);
+    private void fillOccupantInfo(List<DormBed> beds, DormRoomVO vo) {
+        if (CollUtil.isEmpty(beds)) {
+            vo.setBedList(Collections.emptyList());
+            return;
         }
+        
+        // 1. 分离 ID：学生 vs 教工
+        List<Long> studentIds = new ArrayList<>();
+        List<Long> teacherIds = new ArrayList<>();
+        
+        for (DormBed bed : beds) {
+            if (bed.getOccupantId() != null && bed.getOccupantType() != null) {
+                if (bed.getOccupantType() == 0) {
+                    studentIds.add(bed.getOccupantId());
+                } else if (bed.getOccupantType() == 1) {
+                    teacherIds.add(bed.getOccupantId());
+                }
+            }
+        }
+        
+        // 2. 批量查询学生
+        Map<Long, SysOrdinaryUser> studentMap = new HashMap<>();
+        if (CollUtil.isNotEmpty(studentIds)) {
+            List<SysOrdinaryUser> students = ordinaryUserMapper.selectByIds(studentIds);
+            for (SysOrdinaryUser s : students) studentMap.put(s.getId(), s);
+        }
+        
+        // 3. 批量查询教工
+        Map<Long, SysAdminUser> teacherMap = new HashMap<>();
+        if (CollUtil.isNotEmpty(teacherIds)) {
+            List<SysAdminUser> teachers = adminUserMapper.selectByIds(teacherIds);
+            for (SysAdminUser t : teachers) teacherMap.put(t.getId(), t);
+        }
+        
+        // 4. 组装 BedInfo
         List<DormRoomVO.BedInfo> list = new ArrayList<>();
         for (DormBed bed : beds) {
             DormRoomVO.BedInfo info = new DormRoomVO.BedInfo();
             info.setBedId(bed.getId());
             info.setBedLabel(bed.getBedLabel());
-            info.setStudentId(bed.getOccupantId());
-            if (bed.getOccupantId() != null) {
-                SysOrdinaryUser u = map.get(bed.getOccupantId());
-                if (u != null) {
-                    info.setStudentName(u.getRealName());
-                    info.setStudentNo(u.getUsername());
+            info.setSortOrder(bed.getSortOrder());
+            
+            // 填充通用字段
+            Long uid = bed.getOccupantId();
+            Integer type = bed.getOccupantType();
+            
+            info.setOccupantId(uid);
+            info.setOccupantType(type);
+            
+            if (uid != null && type != null) {
+                if (type == 0) { // 学生
+                    SysOrdinaryUser s = studentMap.get(uid);
+                    if (s != null) {
+                        info.setOccupantName(s.getRealName());
+                        info.setOccupantNo(s.getUsername()); // 假设 username 是学号
+                    }
+                } else if (type == 1) { // 教工
+                    SysAdminUser t = teacherMap.get(uid);
+                    if (t != null) {
+                        info.setOccupantName(t.getRealName());
+                        info.setOccupantNo(t.getUsername()); // 假设 username 是工号
+                    }
                 }
             }
             list.add(info);
@@ -489,45 +448,47 @@ public class DormRoomServiceImpl extends ServiceImpl<DormRoomMapper, DormRoom> i
         vo.setBedList(list);
     }
     
-    /**
-     * 批量创建床位 (新增房间时调用)
-     */
-    private void createBeds(Long roomId, String roomNo, int count) {
+    private void createBeds(DormRoom room, int count) {
         for (int i = 1; i <= count; i++) {
             DormBed bed = new DormBed();
-            bed.setRoomId(roomId);
-            bed.setBedLabel(roomNo + "-" + i);
+            bed.setCampusId(room.getCampusId());
+            bed.setBuildingId(room.getBuildingId());
+            bed.setFloorId(room.getFloorId());
+            bed.setRoomId(room.getId());
+            bed.setBedLabel(room.getRoomNo() + "-" + i);
+            bed.setSortOrder(i);
+            bed.setStatus(0);
             bedMapper.insert(bed);
         }
     }
     
-    /**
-     * 扩容：追加新床位
-     */
-    private void addMoreBeds(Long roomId, String roomNo, int start, int end) {
+    private void addMoreBeds(DormRoom room, int start, int end) {
         for (int i = start; i <= end; i++) {
             DormBed bed = new DormBed();
-            bed.setRoomId(roomId);
-            bed.setBedLabel(roomNo + "-" + i);
+            bed.setCampusId(room.getCampusId());
+            bed.setBuildingId(room.getBuildingId());
+            bed.setFloorId(room.getFloorId());
+            bed.setRoomId(room.getId());
+            bed.setBedLabel(room.getRoomNo() + "-" + i);
+            bed.setSortOrder(i);
+            bed.setStatus(0);
             bedMapper.insert(bed);
         }
     }
     
-    /**
-     * 缩容：删除多余的空床位
-     */
     private void removeExcessBeds(Long roomId, int count) {
-        // 优先删除床位号较大的空床 (如 101-4)
         List<DormBed> beds = bedMapper.selectList(new LambdaQueryWrapper<DormBed>()
-                .eq(DormBed::getRoomId, roomId).isNull(DormBed::getOccupantId)
-                .orderByDesc(DormBed::getBedLabel).last("LIMIT " + count));
+                .eq(DormBed::getRoomId, roomId)
+                .isNull(DormBed::getOccupantId)
+                .orderByDesc(DormBed::getSortOrder)
+                .last("LIMIT " + count));
         
         if (beds.size() < count) {
-            throw new ServiceException("缩容失败：空床位不足，请先检查是否有人居住");
+            throw new ServiceException("缩容失败：空床位不足");
         }
         
-        // 批量删除
-        // ⚠️ 修复点：deleteBatchIds -> deleteByIds
-        bedMapper.deleteByIds(beds.stream().map(DormBed::getId).toList());
+        // 推荐写法：使用 deleteByIds 替代 deleteBatchIds
+        List<Long> ids = beds.stream().map(DormBed::getId).collect(Collectors.toList());
+        bedMapper.deleteByIds(ids);
     }
 }

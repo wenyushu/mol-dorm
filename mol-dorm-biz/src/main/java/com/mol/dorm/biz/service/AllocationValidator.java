@@ -18,15 +18,14 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
  * 分配数据完整性校验器
  * <p>
- * 专门负责“扫雷”：检测幽灵数据、孤儿数据、超卖房间及统计进度。
+ * 专门负责“扫雷”：检测幽灵数据、超卖房间及统计进度。
+ * 本类使用了 JDK 17 特性 (如 .toList() )。
  * </p>
  *
  * @author mol
@@ -47,115 +46,144 @@ public class AllocationValidator {
      * 对指定校区进行全量数据体检
      *
      * @param campusId 校区 ID
-     * @return 健康报告
+     * @return 健康报告 VO
      */
     public AllocationStatsVO analyzeCampus(Long campusId) {
+        // 1. 基础数据获取：校区信息
         SysCampus campus = campusService.getById(campusId);
         if (campus == null) return null;
         
         AllocationStatsVO report = new AllocationStatsVO();
         report.setCampusName(campus.getCampusName());
         
-        // ------------------------------------------------
-        // 1. 基础人群画像 (User Dimension)
-        // ------------------------------------------------
-        // 获取该校区所有学院
+        // =========================================================================
+        // Step 1: 基础人群画像 (User Dimension) - 统计有多少人需要住
+        // =========================================================================
+        
+        // A. 获取该校区下的所有学院 ID
         List<Long> collegeIds = collegeService.list(Wrappers.<SysCollege>lambdaQuery()
                         .eq(SysCollege::getCampusId, campusId))
-                .stream().map(SysCollege::getId).collect(Collectors.toList());
+                .stream()
+                .map(SysCollege::getId)
+                .toList(); // JDK 17: 直接转为不可变列表
         
-        List<SysOrdinaryUser> allStudents = List.of();
+        List<SysOrdinaryUser> allStudents = new ArrayList<>();
         if (CollUtil.isNotEmpty(collegeIds)) {
+            // B. 查询这些学院下的所有学生 (不分状态，全量查)
             allStudents = userService.list(Wrappers.<SysOrdinaryUser>lambdaQuery()
                     .in(SysOrdinaryUser::getCollegeId, collegeIds));
         }
         report.setTotalStudents((long) allStudents.size());
         
-        // 状态分类
-        // status: 0-正常 1-停用(休学等)
-        // residence_type: 0-住校 1-走读
+        // C. 维度统计
+        // Status: "0"-正常, "1"-停用/休学
+        // ResidenceType: 0-住校, 1-走读
         long suspended = allStudents.stream().filter(u -> !"0".equals(u.getStatus())).count();
         long offCampus = allStudents.stream().filter(u -> "0".equals(u.getStatus()) && u.getResidenceType() == 1).count();
+        // 核心关注群体：正常状态且申请住校的学生
         long needDorm = allStudents.stream().filter(u -> "0".equals(u.getStatus()) && u.getResidenceType() == 0).count();
         
         report.setSuspendedCount(suspended);
         report.setOffCampusCount(offCampus);
         
-        // ------------------------------------------------
-        // 2. 住宿数据核查 (Bed/Room Dimension)
-        // ------------------------------------------------
-        // 获取该校区所有楼栋 -> 房间 -> 床位
+        // =========================================================================
+        // Step 2: 住宿资源核查 (Resource Dimension) - 统计有多少床位
+        // =========================================================================
+        
+        // A. 获取该校区所有楼栋
         List<Long> buildingIds = buildingService.list(Wrappers.<DormBuilding>lambdaQuery()
                         .eq(DormBuilding::getCampusId, campusId))
-                .stream().map(DormBuilding::getId).collect(Collectors.toList());
+                .stream()
+                .map(DormBuilding::getId)
+                .toList();
         
-        List<DormRoom> allRooms = List.of();
-        List<DormBed> allBeds = List.of();
+        List<DormRoom> allRooms = new ArrayList<>();
+        List<DormBed> allBeds = new ArrayList<>();
         
         if (CollUtil.isNotEmpty(buildingIds)) {
+            // B. 获取所有房间
             allRooms = roomService.list(Wrappers.<DormRoom>lambdaQuery()
                     .in(DormRoom::getBuildingId, buildingIds));
-            allBeds = bedService.list(Wrappers.<DormBed>lambdaQuery()
-                    .in(DormBed::getRoomId, allRooms.stream().map(DormRoom::getId).toList()));
+            
+            if (CollUtil.isNotEmpty(allRooms)) {
+                List<Long> roomIds = allRooms.stream().map(DormRoom::getId).toList();
+                // C. 获取所有床位
+                allBeds = bedService.list(Wrappers.<DormBed>lambdaQuery()
+                        .in(DormBed::getRoomId, roomIds));
+            }
         }
         
-        // ------------------------------------------------
-        // 3. 核心：交叉验证 (Cross Validation)
-        // ------------------------------------------------
+        // =========================================================================
+        // Step 3: 核心交叉验证 (Cross Validation) - 计算“分配率”
+        // =========================================================================
         
-        // A. 统计实际占用床位的 ID 集合
-        Set<Long> occupantIds = allBeds.stream()
-                .filter(b -> b.getOccupantId() != null)
+        // A. 提取出所有“确实有人住”的床位上的 OccupantID
+        Set<Long> occupantIdsInBeds = allBeds.stream()
                 .map(DormBed::getOccupantId)
+                .filter(occupantId -> occupantId != null)
                 .collect(Collectors.toSet());
         
-        // B. 计算分配进度
-        // 在“需要住宿”的学生中，有多少人在 occupantIds 里
+        // B. 计算逻辑：在【需要住校】的学生名单中，有多少人的 ID 出现在了【床位表】里
         long allocatedReal = allStudents.stream()
-                .filter(u -> "0".equals(u.getStatus()) && u.getResidenceType() == 0) // 正常且申请住校
-                .filter(u -> occupantIds.contains(u.getId()))
+                .filter(u -> "0".equals(u.getStatus()) && u.getResidenceType() == 0)
+                .filter(u -> occupantIdsInBeds.contains(u.getId()))
                 .count();
         
         report.setAllocatedCount(allocatedReal);
         report.setUnallocatedCount(needDorm - allocatedReal);
+        // 计算百分比，保留1位小数
         report.setProgressRate(needDorm == 0 ? "100%" :
                 NumberUtil.formatPercent((double) allocatedReal / needDorm, 1));
         
-        // ------------------------------------------------
-        // 4. 异常检测 (Anomaly Detection)
-        // ------------------------------------------------
+        // =========================================================================
+        // Step 4: 异常检测 (Anomaly Detection) - 寻找脏数据
+        // =========================================================================
+        
         int errorCount = 0;
         List<String> details = report.getErrorDetails();
         
-        // 🚨 异常1: 幽灵床位 (Ghost Bed)
-        // 床位上有人(ID)，但这个 ID 不在本校区学生列表里，或者是休学/走读生
-        // (注：这里简单处理，只检查 ID 是否属于本校区有效学生。如果查不到，可能是脏数据或跨校区分配错误)
-        Set<Long> validStudentIds = allStudents.stream().map(SysOrdinaryUser::getId).collect(Collectors.toSet());
+        // 🚨 异常检测 1: 幽灵床位 (Ghost Bed)
+        // 定义：床位上记录了 occupant_id，但这个 ID 在本校区的有效学生列表里找不到。
+        // 可能原因：
+        // 1. 学生转校区了，但床位没退。
+        // 2. 学生休学/退学了，但床位没退。
+        // 3. 数据库手动删了学生，忘删床位。
+        
+        // 制作本校区有效学生 ID 集合 (Set 查询快)
+        Set<Long> validStudentIds = allStudents.stream()
+                .map(SysOrdinaryUser::getId)
+                .collect(Collectors.toSet());
+        
         for (DormBed bed : allBeds) {
-            if (bed.getOccupantId() != null) {
+            // 只有当床位有人(occupantId != null) 且 住的是学生(Type=0或null) 时才校验
+            // 如果住的是教职工(Type=1)，则跳过校验，否则会误报
+            if (bed.getOccupantId() != null && (bed.getOccupantType() == null || bed.getOccupantType() == 0)) {
                 if (!validStudentIds.contains(bed.getOccupantId())) {
-                    // 进一步检查：是不是压根没这个用户？
                     errorCount++;
-                    report.setGhostBedCount(report.getGhostBedCount() == null ? 1 : report.getGhostBedCount() + 1);
-                    details.add(StrUtil.format("幽灵床位: 房间[{}]床位[{}] 占用者ID[{}] 非本校区有效学生",
+                    report.setGhostBedCount(defaultValue(report.getGhostBedCount()) + 1);
+                    details.add(StrUtil.format("👻 幽灵床位: 房间[{}] 床位[{}] 占用者ID[{}] 非本校区在籍学生",
                             bed.getRoomId(), bed.getBedLabel(), bed.getOccupantId()));
                 }
             }
         }
         
-        // 🚨 异常2: 超卖房间 (Oversold)
-        // 房间实住人数(current_num) > 容量(capacity)
+        // 🚨 异常检测 2: 超卖房间 (Oversold Room)
+        // 定义：房间的 current_num (实住人数) > capacity (物理容量)。
+        // 原因：并发控制失效，导致多个人抢到了同一个床位，或者数据手动改错了。
         for (DormRoom room : allRooms) {
             if (room.getCurrentNum() > room.getCapacity()) {
                 errorCount++;
-                report.setOversoldRoomCount(report.getOversoldRoomCount() == null ? 1 : report.getOversoldRoomCount() + 1);
-                details.add(StrUtil.format("严重超卖: 房间[{}] 容量{}人, 实住{}人",
+                report.setOversoldRoomCount(defaultValue(report.getOversoldRoomCount()) + 1);
+                details.add(StrUtil.format("💥 严重超卖: 房间[{}] 容量{}人, 记录实住{}人",
                         room.getRoomNo(), room.getCapacity(), room.getCurrentNum()));
             }
         }
         
-        // 🚨 异常3: 数据不同步 (Sync Error)
-        // 房间表的 current_num != 床位表中该房间不为空的数量
+        // 🚨 异常检测 3: 数据计数不同步 (Sync Error)
+        // 定义：Room 表里的 current_num 字段，不等于 Bed 表里该房间实际占用的数量。
+        // 原因：分配或退宿时，事务未完全提交，或者直接操作了 Bed 表没更新 Room 表。
+        
+        // 实时计算每个房间的实际床位占用数
         Map<Long, Long> realOccupancyMap = allBeds.stream()
                 .filter(b -> b.getOccupantId() != null)
                 .collect(Collectors.groupingBy(DormBed::getRoomId, Collectors.counting()));
@@ -164,24 +192,26 @@ public class AllocationValidator {
             long realCount = realOccupancyMap.getOrDefault(room.getId(), 0L);
             if (room.getCurrentNum() != realCount) {
                 errorCount++;
-                report.setSyncErrorCount(report.getSyncErrorCount() == null ? 1 : report.getSyncErrorCount() + 1);
-                details.add(StrUtil.format("计数不同步: 房间[{}] 记录{}人, 实际床位占用{}人",
+                report.setSyncErrorCount(defaultValue(report.getSyncErrorCount()) + 1);
+                details.add(StrUtil.format("⚠️ 计数不同步: 房间[{}] Room表记{}人, Bed表实占{}人",
                         room.getRoomNo(), room.getCurrentNum(), realCount));
             }
         }
         
-        // 🚨 异常4: 孤儿用户 (Orphan - 逻辑上的)
-        // 如果系统有字段标记了"已入住"但没床位（当前系统主要靠bed表判断，所以此项暂时通过 allocatedCount 计算体现）
-        // 比如：状态是“住校”，但分配完了还没床位，这在 unallocatedCount 里体现，不算数据错误。
-        // 但如果有 "走读生" 却占了床位，这属于幽灵床位的一种。
-        
         report.setErrorCount(errorCount);
         
-        // 截断详情日志，防止过长
+        // 日志截断：如果异常太多，只展示前 20 条，防止前端炸裂
         if (details.size() > 20) {
-            details.add("... 更多异常请查看后台日志");
+            details.add("... (异常数据过多，请查看后台详细日志)");
         }
         
         return report;
+    }
+    
+    /**
+     * 辅助方法：处理 Integer null 值为 0
+     */
+    private int defaultValue(Integer val) {
+        return val == null ? 0 : val;
     }
 }

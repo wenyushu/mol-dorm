@@ -20,17 +20,17 @@ public class UserProfileController {
     private final UserService userService;
     
     @Operation(summary = "修改个人资料", description = "修改昵称、头像、手机号等")
-    @SaCheckLogin // 必须登录
+    @SaCheckLogin // 🔒 必须登录
     @PutMapping
-    public R<Void> updateProfile(@Validated @RequestBody UserProfileBody body) {
+    public R<String> updateProfile(@Validated @RequestBody UserProfileBody body) {
         userService.updateProfile(body);
         return R.ok("修改成功");
     }
     
     @Operation(summary = "修改登录密码")
-    @SaCheckLogin
+    @SaCheckLogin // 🔒 必须登录
     @PutMapping("/password")
-    public R<Void> updatePassword(@Validated @RequestBody UpdatePasswordBody body) {
+    public R<String> updatePassword(@Validated @RequestBody UpdatePasswordBody body) {
         userService.updatePassword(body);
         return R.ok("密码修改成功，请重新登录");
     }

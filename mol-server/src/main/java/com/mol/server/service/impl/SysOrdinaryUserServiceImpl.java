@@ -212,14 +212,23 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
         String idCard = user.getIdCard();
         if (StrUtil.isBlank(idCard) || !IdcardUtil.isValidCard(idCard)) return;
         try {
+            // 1. 解析生日
             String birth = IdcardUtil.getBirthByIdCard(idCard);
             user.setBirthDate(LocalDate.parse(birth, DateTimeFormatter.ofPattern("yyyyMMdd")));
+            
+            // 2. 解析籍贯
             if (StrUtil.isBlank(user.getHometown())) {
                 user.setHometown(IdcardUtil.getProvinceByIdCard(idCard));
             }
-            int gender = IdcardUtil.getGenderByIdCard(idCard);
-            user.setSex(gender == 1 ? 1 : 2);
-        } catch (Exception ignored) {}
+            
+            // 3. 解析性别 (Hutool 标准: 1男 0女)
+            // 🟢 直接转 String 即可，完美对齐 "0-女 1-男"
+            int genderVal = IdcardUtil.getGenderByIdCard(idCard);
+            user.setGender(String.valueOf(genderVal));
+            
+        } catch (Exception ignored) {
+            log.warn("身份证解析失败: {}", idCard);
+        }
     }
     
     private String convertLevelToCode(String levelName) {

@@ -4,6 +4,7 @@ import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.annotation.SaMode;
 import cn.dev33.satoken.stp.StpUtil;
+import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mol.common.core.constant.RoleConstants;
 import com.mol.common.core.util.LoginHelper;
@@ -26,18 +27,21 @@ public class RepairOrderController {
     private final RepairOrderService repairService;
     private final DormBedService bedService;
     
-    @Operation(summary = "学生提交报修")
-    @SaCheckRole(RoleConstants.STUDENT)
+    @Operation(summary = "提交报修")
+    @SaCheckLogin // 改为登录即可，教工也能报修
     @PostMapping("/submit")
     public R<Void> submit(@RequestBody RepairOrder vo) {
-        // ✅ 修复：使用 LoginHelper 获取当前学生 ID
         Long userId = LoginHelper.getUserId();
         
-        // 自动查找学生当前所在房间
+        // 自动查找当前所在房间
         Long roomId = vo.getRoomId();
         if (roomId == null) {
-            DormBed bed = bedService.getBedByStudentId(userId);
-            if (bed == null) return R.failed("您当前未入住，无法报修");
+            // 🟢 修复点：使用通用查询替代 getBedByStudentId
+            DormBed bed = bedService.getOne(new LambdaQueryWrapper<DormBed>()
+                    .eq(DormBed::getOccupantId, userId)
+                    .last("LIMIT 1"));
+            
+            if (bed == null) return R.fail("您当前未入住，无法自动获取房间号，请手动选择");
             roomId = bed.getRoomId();
         }
         
@@ -49,7 +53,6 @@ public class RepairOrderController {
     @SaCheckRole(value = {RoleConstants.DORM_MANAGER, RoleConstants.SUPER_ADMIN}, mode = SaMode.OR)
     @PostMapping("/assign")
     public R<Void> assign(@RequestParam Long orderId, @RequestParam Long repairmanId) {
-        // 管理员操作，无需获取 LoginId
         repairService.assign(orderId, repairmanId);
         return R.ok();
     }
@@ -62,12 +65,11 @@ public class RepairOrderController {
         return R.ok();
     }
     
-    @Operation(summary = "评价工单 (学生)")
-    @SaCheckRole(RoleConstants.STUDENT)
+    @Operation(summary = "评价工单 (用户)")
+    @SaCheckLogin
     @PostMapping("/rate")
     public R<Void> rate(@RequestBody RepairOrder vo) {
-        // 🛡️ 防刁民建议：Service层最好校验一下这个 orderId 是否属于当前用户
-        // 这里暂时只做 ID 获取的修复
+        // 🛡️ 防刁民建议：Service层校验 orderId 的归属
         repairService.rate(vo.getId(), vo.getRating(), vo.getComment());
         return R.ok();
     }
@@ -82,11 +84,8 @@ public class RepairOrderController {
         
         Page<RepairOrder> page = new Page<>(pageNum, pageSize);
         
-        // 获取当前用户角色
+        // 获取当前用户角色 (需要前端传或者后端 Session 取，这里假设 Session 有)
         String role = (String) StpUtil.getSession().get("role");
-        
-        // ✅ 修复：使用 LoginHelper
-        // Service 层会根据 role 判断：如果是 student，则强制加上 userId=currentUserId 的查询条件
         Long currentUserId = LoginHelper.getUserId();
         
         return R.ok(repairService.getPage(page, query, currentUserId, role));

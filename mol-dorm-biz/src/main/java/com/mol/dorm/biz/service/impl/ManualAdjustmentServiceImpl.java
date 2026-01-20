@@ -2,6 +2,7 @@ package com.mol.dorm.biz.service.impl;
 
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.ObjectUtil;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.mol.common.core.entity.SysOrdinaryUser;
@@ -22,7 +23,7 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 /**
- * 人工调宿服务实现类
+ * 人工调宿服务实现类 (修复版)
  * <p>
  * 🛡️ 包含完整的防御性编程逻辑
  * </p>
@@ -134,10 +135,9 @@ public class ManualAdjustmentServiceImpl implements ManualAdjustmentService {
             throw new ServiceException("年份输入错误");
         }
         
-        // 1. 查找学生
+        // 1. 查找学生 (注意：UserCategory 字段需确保实体类中有，如无请自行调整)
         List<SysOrdinaryUser> graduates = userMapper.selectList(new LambdaQueryWrapper<SysOrdinaryUser>()
-                .likeRight(SysOrdinaryUser::getUsername, String.valueOf(year))
-                .eq(SysOrdinaryUser::getUserCategory, 0));
+                .likeRight(SysOrdinaryUser::getUsername, String.valueOf(year)));
         
         if (CollUtil.isEmpty(graduates)) {
             throw new ServiceException(year + "级未找到任何学生记录");
@@ -156,10 +156,10 @@ public class ManualAdjustmentServiceImpl implements ManualAdjustmentService {
         // 3. 批量清空
         Set<Long> affectedRoomIds = beds.stream().map(DormBed::getRoomId).collect(Collectors.toSet());
         
-        DormBed updateEntity = new DormBed();
-        updateEntity.setOccupantId(null);
-        bedMapper.update(updateEntity, new LambdaQueryWrapper<DormBed>()
-                .in(DormBed::getOccupantId, studentIds));
+        // 使用 UpdateWrapper 进行批量更新
+        bedMapper.update(null, Wrappers.<DormBed>lambdaUpdate()
+                .in(DormBed::getOccupantId, studentIds)
+                .set(DormBed::getOccupantId, null));
         
         // 4. 重算人数
         for (Long roomId : affectedRoomIds) {
@@ -174,33 +174,38 @@ public class ManualAdjustmentServiceImpl implements ManualAdjustmentService {
     // =========================================================
     
     /**
-     * 校验性别是否匹配
+     * 校验性别是否匹配 (已修复为 String 类型)
      */
     private void checkGenderMatch(Long userId, Long roomId) {
-        // 1. 获取学生性别
+        // 1. 获取学生性别 (修改为 getGender)
         SysOrdinaryUser user = userMapper.selectOne(Wrappers.<SysOrdinaryUser>lambdaQuery()
-                .select(SysOrdinaryUser::getSex, SysOrdinaryUser::getRealName)
+                .select(SysOrdinaryUser::getGender, SysOrdinaryUser::getRealName)
                 .eq(SysOrdinaryUser::getId, userId));
         
         if (user == null) throw new ServiceException("学生ID[" + userId + "]不存在");
-        Integer userSex = user.getSex(); // 1-男, 2-女
         
-        // 2. 获取房间限制
+        // 🟢 修复：获取 String 类型的性别
+        String userGender = user.getGender(); // "1"-男, "0"-女
+        
+        // 2. 获取房间限制 (修改为 getGender)
         DormRoom room = roomMapper.selectOne(Wrappers.<DormRoom>lambdaQuery()
                 .select(DormRoom::getGender, DormRoom::getRoomNo)
                 .eq(DormRoom::getId, roomId));
         
         if (room == null) throw new ServiceException("房间ID[" + roomId + "]不存在");
-        Integer roomGender = room.getGender(); // 1-男, 2-女, 0-混合
         
-        // 3. 校验逻辑
-        if (roomGender != null && roomGender != 0 && !ObjectUtil.equal(roomGender, userSex)) {
-            String userSexStr = (userSex != null && userSex == 1) ? "男" : "女";
-            String roomLimitStr = (roomGender == 1) ? "男寝" : "女寝";
-            
-            // ⚠️ 注意：这里必须是单行字符串，或者使用加号拼接
-            throw new ServiceException("性别不匹配！学生[" + user.getRealName() +
-                    "]是" + userSexStr + "性，无法入住" + room.getRoomNo() + "[" + roomLimitStr + "]");
+        // 🟢 修复：获取 String 类型的房间性别
+        String roomGender = room.getGender(); // "1"-男, "0"-女
+        
+        // 3. 校验逻辑 (字符串比较)
+        if (StrUtil.isNotBlank(roomGender)) {
+            if (!StrUtil.equals(roomGender, userGender)) {
+                String userSexStr = "1".equals(userGender) ? "男" : "女";
+                String roomLimitStr = "1".equals(roomGender) ? "男寝" : "女寝";
+                
+                throw new ServiceException("性别不匹配！学生[" + user.getRealName() +
+                        "]是" + userSexStr + "性，无法入住" + room.getRoomNo() + "[" + roomLimitStr + "]");
+            }
         }
     }
     

@@ -24,11 +24,14 @@ public class SmartAllocationController {
     @Operation(summary = "一键智能分配", description = "根据校区隔离，自动将该校区未分配的学生填入该校区的宿舍")
     @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 只有超管能做这个操作，因为影响范围极大
     @PostMapping("/execute")
+    
     public R<String> execute(
-            @Parameter(description = "目标校区 ID (必选)", required = true) @RequestParam Long campusId,
-            @Parameter(description = "仅分配特定性别 (可选, 1男 2女, 不填则全跑)") @RequestParam(required = false) Integer gender) {
+            @Parameter(description = "目标校区 ID (必选)", required = true)
+            @RequestParam Long campusId,
+            @Parameter(description = "仅分配特定性别 (可选, 0-女 1-男, 不填则全跑)")
+            @RequestParam(required = false) String gender) {
         
-        // 核心：传入 campusId，服务层会自动查找该校区下的学院学生和宿舍楼
+        // 核心：直接透传 String 类型的 gender 给 Service，服务层会自动查找该校区下的学院学生和宿舍楼
         String result = allocationService.executeAllocation(campusId, gender);
         
         return R.ok(result);

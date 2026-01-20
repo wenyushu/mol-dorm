@@ -1,8 +1,10 @@
 package com.mol.dorm.biz.service.impl;
 
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mol.common.core.entity.SysAdminUser;
 import com.mol.common.core.entity.SysOrdinaryUser;
 import com.mol.common.core.exception.ServiceException;
 import com.mol.dorm.biz.entity.DormBed;
@@ -10,6 +12,7 @@ import com.mol.dorm.biz.entity.DormRoom;
 import com.mol.dorm.biz.mapper.DormBedMapper;
 import com.mol.dorm.biz.mapper.DormRoomMapper;
 import com.mol.dorm.biz.service.DormBedService;
+import com.mol.server.mapper.SysAdminUserMapper;
 import com.mol.server.mapper.SysOrdinaryUserMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -17,10 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 宿舍床位业务实现类 (最终增强版)
- * <p>
- * 包含完整的“防刁民”校验逻辑、并发锁控制以及数据一致性维护。
- * </p>
+ * 宿舍床位业务核心实现类
  *
  * @author mol
  */
@@ -29,95 +29,115 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class DormBedServiceImpl extends ServiceImpl<DormBedMapper, DormBed> implements DormBedService {
     
-    private final SysOrdinaryUserMapper userMapper;
     private final DormRoomMapper roomMapper;
+    private final SysOrdinaryUserMapper ordinaryUserMapper;
+    private final SysAdminUserMapper adminUserMapper;
     
-    /**
-     * 分配床位 (预分配)
-     * 核心逻辑：
-     * 1. 校验人：是否存在、是否已有床位(防多占)、性别是否匹配。
-     * 2. 校验床：是否存在、是否已有人。
-     * 3. 并发写：使用乐观锁抢占床位。
-     */
+    // =================================================================================================
+    // 核心业务：分配床位 (入住)
+    // =================================================================================================
+    
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void assignUserToBed(Long bedId, Long userId) {
-        // ================== 1. 防刁民：参数与身份校验 ==================
-        if (bedId == null || userId == null) {
-            throw new ServiceException("参数错误：床位ID或用户ID不能为空");
+    public void assignBed(Long bedId, Long userId, Integer userType) {
+        // --- 1. 基础参数校验 ---
+        if (bedId == null || userId == null || userType == null) {
+            throw new ServiceException("分配失败：关键参数缺失");
         }
         
-        SysOrdinaryUser user = userMapper.selectById(userId);
-        if (user == null) {
-            throw new ServiceException("学生不存在，无法分配");
+        // --- 2. 用户身份核验 & 性别获取 ---
+        String userGender; // "0"-女, "1"-男
+        String userName;
+        
+        if (userType == 0) {
+            SysOrdinaryUser user = ordinaryUserMapper.selectById(userId);
+            if (user == null) throw new ServiceException("用户不存在 (ID: " + userId + ")");
+            userGender = user.getGender();
+            userName = user.getRealName();
+            if ("1".equals(user.getStatus())) throw new ServiceException("该账号已被停用，无法办理入住");
+            
+        } else if (userType == 1) {
+            SysAdminUser admin = adminUserMapper.selectById(userId);
+            if (admin == null) throw new ServiceException("管理员不存在 (ID: " + userId + ")");
+            userGender = admin.getGender();
+            userName = admin.getRealName();
+        } else {
+            throw new ServiceException("不支持的用户类型");
         }
         
-        // [核心防御] 检查该学生是否已经在别的床上躺着了
-        // 防止出现 “同一个ID占两个坑” 的数据腐坏情况
-        Long count = this.baseMapper.selectCount(Wrappers.<DormBed>lambdaQuery()
-                .eq(DormBed::getOccupantId, userId));
+        // --- 3. 防重入校验 ---
+        Long count = this.baseMapper.selectCount(new LambdaQueryWrapper<DormBed>()
+                .eq(DormBed::getOccupantId, userId)
+                .eq(DormBed::getOccupantType, userType));
         if (count > 0) {
-            throw new ServiceException("分配失败：该学生已分配其他床位，请先退宿！");
+            throw new ServiceException("分配失败：该用户已分配其他床位，请先执行退宿操作！");
         }
         
-        // ================== 2. 校验目标床位与房间 ==================
+        // --- 4. 床位与房间状态校验 ---
         DormBed bed = this.getById(bedId);
-        if (bed == null) {
-            throw new ServiceException("目标床位不存在");
-        }
-        if (bed.getOccupantId() != null) {
-            throw new ServiceException("手慢了！该床位已被占用");
+        if (bed == null) throw new ServiceException("目标床位不存在");
+        
+        if (bed.getStatus() != 0) {
+            throw new ServiceException("操作拦截：该床位当前不可分配 (状态码: " + bed.getStatus() + ")");
         }
         
         DormRoom room = roomMapper.selectById(bed.getRoomId());
-        if (room == null) {
-            throw new ServiceException("数据异常：床位所属房间不存在");
+        if (room == null) throw new ServiceException("床位所属房间不存在");
+        
+        if (room.getStatus() >= 40) {
+            throw new ServiceException("操作拦截：所属房间处于维修/装修封锁状态，禁止入住");
         }
         
-        // [核心防御] 性别门禁校验
-        // 1=男, 2=女。如果房间有性别限制，必须匹配。
-        if (room.getGender() != null && room.getGender() != 0 && user.getSex() != null) {
-            if (!room.getGender().equals(user.getSex())) {
-                throw new ServiceException("严重警告：性别不符，禁止分配！");
+        // --- 5. 性别熔断机制 ---
+        if (!StrUtil.equals(room.getGender(), userGender)) {
+            String roomLimit = "1".equals(room.getGender()) ? "男寝" : "女寝";
+            // 🟢 修复点：直接使用局部变量 userGender，而不是调用那个 dummy 方法
+            String userSex = "1".equals(userGender) ? "男" : "女";
+            throw new ServiceException("性别严重不符：试图将 [" + userSex + "] 性用户分配至 [" + roomLimit + "]");
+        }
+        
+        // --- 6. 执行分配 ---
+        boolean updateBed = this.update(Wrappers.<DormBed>lambdaUpdate()
+                .eq(DormBed::getId, bedId)
+                .eq(DormBed::getStatus, 0)
+                .set(DormBed::getOccupantId, userId)
+                .set(DormBed::getOccupantType, userType)
+                .set(DormBed::getStatus, 1));
+        
+        if (!updateBed) {
+            throw new ServiceException("手慢了！该床位刚刚被抢占或状态已变更");
+        }
+        
+        // --- 7. 联动维护房间数据 ---
+        synchronized (this) {
+            roomMapper.incrementCurrentNum(room.getId());
+            DormRoom updatedRoom = roomMapper.selectById(room.getId());
+            if (updatedRoom.getCurrentNum() >= updatedRoom.getCapacity()) {
+                updatedRoom.setStatus(20);
+                roomMapper.updateById(updatedRoom);
             }
         }
         
-        // ================== 3. 执行分配 (CAS乐观锁) ==================
-        // SQL: UPDATE dorm_bed SET occupant_id = ? WHERE id = ? AND occupant_id IS NULL
-        // 只有当 occupant_id 为空时才更新，防止并发覆盖
-        boolean success = this.update(Wrappers.<DormBed>lambdaUpdate()
-                .eq(DormBed::getId, bedId)
-                .isNull(DormBed::getOccupantId)
-                .set(DormBed::getOccupantId, userId));
-        
-        if (!success) {
-            throw new ServiceException("分配失败，床位可能刚刚被抢占，请刷新重试");
+        // --- 8. 联动维护用户状态 ---
+        if (userType == 0) {
+            SysOrdinaryUser updateStu = new SysOrdinaryUser();
+            updateStu.setId(userId);
+            updateStu.setResidenceType(0);
+            ordinaryUserMapper.updateById(updateStu);
+        } else {
+            SysAdminUser updateAdmin = new SysAdminUser();
+            updateAdmin.setId(userId);
+            updateAdmin.setResidenceType(0);
+            adminUserMapper.updateById(updateAdmin);
         }
         
-        // ================== 4. 维护房间与学生状态 ==================
-        // 更新房间当前人数
-        int currentNum = (room.getCurrentNum() == null) ? 0 : room.getCurrentNum();
-        room.setCurrentNum(currentNum + 1);
-        
-        // 如果人数达到上限，标记为满员(2)
-        if (room.getCurrentNum() >= room.getCapacity()) {
-            room.setStatus(2);
-        }
-        roomMapper.updateById(room);
-        
-        // 更新学生状态为“住校”
-        user.setResidenceType(0);
-        userMapper.updateById(user);
-        
-        log.info("床位分配成功: 床位[{}-{}] -> 学生[{}]", room.getRoomNo(), bed.getBedLabel(), user.getRealName());
+        log.info("✅ 入住成功: 床位[{}] -> 用户[{}-{}]", bed.getBedLabel(), userType, userName);
     }
     
-    /**
-     * 释放床位 (退宿)
-     * 核心逻辑：
-     * 1. 强制将 occupant_id 置为 NULL。
-     * 2. 减少房间人数。
-     */
+    // =================================================================================================
+    // 核心业务：释放床位 (退宿)
+    // =================================================================================================
+    
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void releaseBed(Long bedId) {
@@ -126,82 +146,65 @@ public class DormBedServiceImpl extends ServiceImpl<DormBedMapper, DormBed> impl
         DormBed bed = this.getById(bedId);
         if (bed == null) throw new ServiceException("床位不存在");
         
-        Long studentId = bed.getOccupantId();
-        if (studentId == null) {
+        Long occupantId = bed.getOccupantId();
+        Integer occupantType = bed.getOccupantType();
+        
+        // 幂等性处理：如果 occupantId 是 null，这里就会返回
+        if (occupantId == null || bed.getStatus() == 0) {
             log.warn("床位[{}]已是空闲状态，无需重复退宿", bed.getBedLabel());
             return;
         }
         
-        // ================== 1. 执行退宿 (强制置空) ==================
-        // [修复] 使用 UpdateWrapper 显式设置 NULL，防止 MyBatis-Plus 忽略 null 更新
+        // --- 1. 执行退宿 ---
         boolean success = this.update(null, Wrappers.<DormBed>lambdaUpdate()
                 .eq(DormBed::getId, bedId)
-                .set(DormBed::getOccupantId, null)); // 关键：强制设为 NULL
+                .set(DormBed::getOccupantId, null)
+                .set(DormBed::getOccupantType, null)
+                .set(DormBed::getStatus, 0));
         
         if (!success) {
-            throw new ServiceException("退宿失败，数据可能已被修改");
+            throw new ServiceException("退宿失败，数据可能已被并发修改");
         }
         
-        // ================== 2. 维护房间数据 ==================
+        // --- 2. 维护房间数据 ---
         DormRoom room = roomMapper.selectById(bed.getRoomId());
-        if (room != null && room.getCurrentNum() > 0) {
-            room.setCurrentNum(room.getCurrentNum() - 1);
-            // 如果之前是满员(2)，现在变回正常(1)
-            if (room.getStatus() == 2) {
-                room.setStatus(1);
+        if (room != null) {
+            if (room.getCurrentNum() > 0) {
+                roomMapper.decrementCurrentNum(room.getId());
             }
-            roomMapper.updateById(room);
+            DormRoom latestRoom = roomMapper.selectById(room.getId());
+            if (latestRoom.getStatus() == 20 && latestRoom.getCurrentNum() < latestRoom.getCapacity()) {
+                latestRoom.setStatus(10);
+                roomMapper.updateById(latestRoom);
+            }
         }
         
-        // ================== 3. 维护学生状态 ==================
-        SysOrdinaryUser user = userMapper.selectById(studentId);
-        if (user != null) {
-            user.setResidenceType(1); // 1-校外/未住
-            userMapper.updateById(user);
+        // --- 3. 维护用户状态 ---
+        // 🟢 修复点：移除了 occupantId != null 的冗余判断
+        // 因为如果 occupantId 为 null，代码在上面就已经 return 了，能走到这里说明它一定有值
+        if (occupantType != null) {
+            if (occupantType == 0) {
+                SysOrdinaryUser user = new SysOrdinaryUser();
+                user.setId(occupantId);
+                user.setResidenceType(1); // 1-校外/未住
+                ordinaryUserMapper.updateById(user);
+            } else {
+                SysAdminUser admin = new SysAdminUser();
+                admin.setId(occupantId);
+                admin.setResidenceType(1); // 1-校外/未住
+                adminUserMapper.updateById(admin);
+            }
         }
         
-        log.info("退宿成功: 床位[{}]，原住户ID[{}]", bed.getBedLabel(), studentId);
+        log.info("👋 退宿成功: 床位[{}]，原住户[{}]", bed.getBedLabel(), occupantId);
     }
     
-    /**
-     * 学生确认入住 (Check-in)
-     * 通常用于开学报到场景
-     */
-    @Override
-    @Transactional(rollbackFor = Exception.class)
-    public void confirmCheckIn(Long userId) {
-        if (userId == null) throw new ServiceException("用户 ID 为空");
-        
-        // 1. 检查该学生是否真的有床位
-        DormBed bed = this.getOne(new LambdaQueryWrapper<DormBed>()
-                .eq(DormBed::getOccupantId, userId)
-                .last("LIMIT 1"));
-        
-        if (bed == null) {
-            throw new ServiceException("系统检测到您尚未分配床位，请先联系宿管或辅导员！");
-        }
-        
-        // 2. 更新学生状态 (双重确认)
-        SysOrdinaryUser user = userMapper.selectById(userId);
-        if (user != null) {
-            user.setResidenceType(0); // 确保标记为住校
-            userMapper.updateById(user);
-        }
-        
-        log.info("学生[{}]已确认入住床位[{}]", userId, bed.getBedLabel());
-    }
+    // =================================================================================================
+    // 辅助查询
+    // =================================================================================================
     
-    /**
-     * 根据学生ID查询当前床位
-     * 用于前端展示“我的床位”或后端逻辑判断
-     */
     @Override
-    public DormBed getBedByStudentId(Long studentId) {
-        if (studentId == null) return null;
-        
-        // 使用 last("LIMIT 1") 防止脏数据导致报错
-        return this.getOne(Wrappers.<DormBed>lambdaQuery()
-                .eq(DormBed::getOccupantId, studentId)
-                .last("LIMIT 1"));
+    public DormBed getBedDetail(Long bedId) {
+        return this.getById(bedId);
     }
 }

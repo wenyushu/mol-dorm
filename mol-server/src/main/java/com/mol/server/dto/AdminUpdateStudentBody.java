@@ -2,6 +2,7 @@ package com.mol.server.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 
 @Data
@@ -17,8 +18,10 @@ public class AdminUpdateStudentBody {
     @Schema(description = "真实姓名 (改名需谨慎)", example = "李四")
     private String realName;
     
-    @Schema(description = "性别 (0-男, 1-女, 2-未知)", example = "0")
-    private String gender; // 仅限管理员操作
+    // 🟢 允许管理员修正性别，但必须符合格式
+    @Pattern(regexp = "[01]", message = "性别只能是 0(女) 或 1(男)")
+    @Schema(description = "性别 (0-女 1-男)", example = "1")
+    private String gender;
     
     @Schema(description = "学院 ID", example = "101")
     private Long collegeId;

@@ -34,11 +34,15 @@ public class UserServiceImpl implements UserService {
     @Transactional(rollbackFor = Exception.class)
     public void updateProfile(UserProfileBody body) {
         Long userId = LoginHelper.getUserId();
-        String userType = LoginHelper.getUserType();
         
-        // --- 1. 修改管理员资料 ---
-        if ("admin".equals(userType)) {
+        // 对应 AuthServiceImpl 中的前缀 (0-管理员, 1-普通用户)
+        Integer userType = LoginHelper.getUserType();
+        
+        // --- 1. 修改管理员资料(userType == 0) ---
+        if (userType != null && userType == 0) {
             SysAdminUser user = adminMapper.selectById(userId);
+            if (user == null) throw new ServiceException("用户不存在");
+            
             checkPhoneUnique(body.getPhone(), userId, true); // 检查手机号
             
             // 更新非敏感信息
@@ -50,13 +54,15 @@ public class UserServiceImpl implements UserService {
             adminMapper.updateById(user);
             updateSessionCache(user.getNickname(), user.getAvatar());
         }
-        // --- 2. 修改学生资料 ---
+        // --- 2. 修改学生资料 (userType == 1) ---
         else {
             SysOrdinaryUser user = ordinaryMapper.selectById(userId);
-            checkPhoneUnique(body.getPhone(), userId, false);
             
-            // 🛡️ 这里绝对不调用 setGender()，setRealName()，setUsername()
-            // 确保学生无法通过此接口修改性别、姓名、学号
+            if (user == null) throw new ServiceException("用户不存在");
+            
+            checkPhoneUnique(body.getPhone(), userId, false);
+
+            // 🛡️ 仅更新允许修改的字段
             if (StrUtil.isNotBlank(body.getNickname())) user.setNickname(body.getNickname());
             if (StrUtil.isNotBlank(body.getPhone())) user.setPhone(body.getPhone());
             if (StrUtil.isNotBlank(body.getAvatar())) user.setAvatar(body.getAvatar());
@@ -72,13 +78,19 @@ public class UserServiceImpl implements UserService {
     @Override
     public void updatePassword(UpdatePasswordBody body) {
         Long userId = LoginHelper.getUserId();
-        String userType = LoginHelper.getUserType();
+        Integer userType = LoginHelper.getUserType();
+        
         String dbPassword;
         
-        if ("admin".equals(userType)) {
-            dbPassword = adminMapper.selectById(userId).getPassword();
+        // 🟢 判断：0 是管理员
+        if (userType != null && userType == 0) {
+            SysAdminUser admin = adminMapper.selectById(userId);
+            if (admin == null) throw new ServiceException("用户不存在");
+            dbPassword = admin.getPassword();
         } else {
-            dbPassword = ordinaryMapper.selectById(userId).getPassword();
+            SysOrdinaryUser user = ordinaryMapper.selectById(userId);
+            if (user == null) throw new ServiceException("用户不存在");
+            dbPassword = user.getPassword();
         }
         
         if (!BCrypt.checkpw(body.getOldPassword(), dbPassword)) {
@@ -90,7 +102,7 @@ public class UserServiceImpl implements UserService {
         
         String newHash = BCrypt.hashpw(body.getNewPassword());
         
-        if ("admin".equals(userType)) {
+        if (userType != null && userType == 0) {
             SysAdminUser update = new SysAdminUser();
             update.setId(userId);
             update.setPassword(newHash);
@@ -101,6 +113,8 @@ public class UserServiceImpl implements UserService {
             update.setPassword(newHash);
             ordinaryMapper.updateById(update);
         }
+        
+        // 修改密码后踢下线
         StpUtil.logout();
     }
     
@@ -124,7 +138,13 @@ public class UserServiceImpl implements UserService {
         if (StrUtil.isNotBlank(body.getStatus())) update.setStatus(body.getStatus());
         
         // 🟢 特权：管理员可以修正性别 (例如新生录入错误)
-        if (StrUtil.isNotBlank(body.getGender())) update.setGender(body.getGender());
+        if (StrUtil.isNotBlank(body.getGender())) {
+            // 如果当前登录人不是 super_admin，直接报错
+            if (!StpUtil.hasRole("super_admin")) {
+                throw new ServiceException("权限不足：性别仅限超级管理员修改，请联系运维人员");
+            }
+            update.setGender(body.getGender());
+        }
         
         // 🛡️ 依然不更新 Username (学号)，学号是系统唯一标识，通常不允许变更
         // 如果非要变学号，建议删除重开账号

@@ -1,58 +1,71 @@
 package com.mol.dorm.biz.vo;
 
-import com.mol.dorm.biz.entity.DormRoom;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import lombok.EqualsAndHashCode;
-
-import java.io.Serial;
-import java.io.Serializable;
 import java.util.List;
 
 /**
- * 宿舍房间详情视图对象 (View Object)
- * <p>
- * 用途：
- * 1. 在列表查询时，携带“床位列表”和“居住人姓名”等额外信息返回给前端。
- * 2. 避免直接修改实体类 DormRoom，保持 Entity 的纯洁性。
- * </p>
- *
- * @author mol
+ * 宿舍房间视图对象 (View Object)
+ * 用于前端展示房间详情、床位分布和人员入住情况
  */
 @Data
-@EqualsAndHashCode(callSuper = true)
-public class DormRoomVO extends DormRoom implements Serializable {
+@Schema(description = "房间展示 VO")
+public class DormRoomVO {
     
-    @Serial
-    private static final long serialVersionUID = 1L;
+    @Schema(description = "房间 ID")
+    private Long id;
     
-    /**
-     * 该房间内的床位列表
-     * (包含：床位号、居住人 ID、居住人姓名、学号)
-     */
+    @Schema(description = "所属校区 ID")
+    private Long campusId;
+    
+    @Schema(description = "所属楼栋 ID")
+    private Long buildingId;
+    
+    @Schema(description = "所在楼层号")
+    private Integer floorNo;
+    
+    @Schema(description = "房间号")
+    private String roomNo;
+    
+    @Schema(description = "房间性别 (0-女 1-男)")
+    private String gender;
+    
+    @Schema(description = "当前人数")
+    private Integer currentNum;
+    
+    @Schema(description = "总床位数")
+    private Integer capacity;
+    
+    @Schema(description = "状态 (10-正常 20-满员 40-维修...)")
+    private Integer status;
+    
+    @Schema(description = "床位列表 (含入住人信息)")
     private List<BedInfo> bedList;
     
     /**
-     * 床位详情内部类
+     * 内部类：床位详情
      */
     @Data
-    public static class BedInfo implements Serializable {
-        
-        @Serial
-        private static final long serialVersionUID = 1L;
-        
-        /** 床位 ID */
+    public static class BedInfo {
+        @Schema(description = "床位 ID")
         private Long bedId;
         
-        /** 床位号 (如: 101-1) */
+        @Schema(description = "床位标签 (如: 101-1)")
         private String bedLabel;
         
-        /** 居住人 ID (空闲则为 null) */
-        private Long studentId;
+        @Schema(description = "床位方位/排序 (1-左上 2-左下...)")
+        private Integer sortOrder;
         
-        /** 居住人姓名 (空闲则为 null) */
-        private String studentName;
+        @Schema(description = "入住者 ID (可能是学生 ID，也可能是教工 ID)")
+        private Long occupantId;
         
-        /** 居住人学号 (空闲则为 null) */
-        private String studentNo;
+        @Schema(description = "入住者姓名 (张三 / 李老师)")
+        private String occupantName;
+        
+        @Schema(description = "入住者编号 (学号 / 工号)")
+        private String occupantNo;
+        
+        @Schema(description = "入住者类型: 0-学生 1-教职工/宿管")
+        private Integer occupantType;
     }
 }

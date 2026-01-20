@@ -13,6 +13,8 @@ import com.mol.dorm.biz.mapper.DormRoomMapper;
 import com.mol.dorm.biz.service.DormBedService;
 import com.mol.dorm.biz.service.DormBuildingService;
 import com.mol.dorm.biz.service.DormRoomService;
+import com.mol.server.entity.SysCampus;
+import com.mol.server.mapper.SysCampusMapper; // ✅ 记得导入这个
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.BeanUtils;
@@ -41,6 +43,9 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
     // 注入房间 Mapper，用于核心的人数统计校验
     private final DormRoomMapper roomMapper;
     
+    // 🟢 修复错误1：注入 CampusMapper，否则无法校验校区状态
+    private final SysCampusMapper campusMapper;
+    
     // 注入房间和床位 Service，用于级联删除和批量插入
     private final DormRoomService roomService;
     private final DormBedService bedService;
@@ -49,11 +54,22 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
     
     @Override
     public boolean saveBuilding(DormBuilding building) {
-        // 设置默认状态
-        if (building.getStatus() == null) {
-            building.setStatus(1); // 1-正常启用
+        // 1. 手动检查外键有效性 (逻辑外键校验)
+        // 🟢 修复后这里就可以正常使用了
+        SysCampus campus = campusMapper.selectById(building.getCampusId());
+        
+        // 2. 校验是否存在
+        if (campus == null || (campus.getDelFlag() != null && "1".equals(campus.getDelFlag()))) {
+            throw new ServiceException("防刁民拦截：所属校区不存在或已删除！");
         }
-        return this.save(building);
+        
+        // 3. 校验状态 (比物理外键更强)
+        // 这里的 status 是 Integer 类型，直接比较
+        if (campus.getStatus() == 0) {
+            throw new ServiceException("防刁民拦截：所属校区已停用，禁止新增楼栋！");
+        }
+        
+        return super.save(building);
     }
     
     /**
@@ -72,6 +88,7 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
         }
         
         // 核心校验：如果准备封楼 (old=1 -> new=0)
+        // 注意：这里的 status 可能是 41(装修)，只要是停用类状态都该检查
         if (building.getStatus() != null && building.getStatus() == 0 && oldBuilding.getStatus() == 1) {
             checkIfBuildingHasPeople(building.getId(), "封禁失败");
         }
@@ -139,6 +156,9 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
         DormBuilding building = new DormBuilding();
         BeanUtils.copyProperties(dto, building);
         building.setStatus(1); // 默认启用
+        // 确保楼栋也有校区ID
+        if (building.getCampusId() == null) throw new ServiceException("必须指定所属校区");
+        
         this.save(building);   // MP 插入后自动回填 ID
         
         Long buildingId = building.getId();
@@ -149,14 +169,20 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
         int floors = dto.getFloors();
         int roomsPerFloor = dto.getRoomsPerFloor();
         int capacity = dto.getDefaultCapacity();
-        int gender = dto.getDefaultGender() == null ? 0 : dto.getDefaultGender(); // 0-混合/未定
+        
+        // 🟢 修复错误2：类型转换
+        // DTO 里的 gender 是 Integer (0/1), Entity 里是 String ("0"/"1")
+        Integer genderInt = dto.getDefaultGender() == null ? 0 : dto.getDefaultGender();
+        String genderStr = String.valueOf(genderInt); // 转为 String
         
         for (int f = 1; f <= floors; f++) {
             for (int r = 1; r <= roomsPerFloor; r++) {
                 DormRoom room = new DormRoom();
+                // 🟢 补全全链路冗余字段 (CampusId)
+                room.setCampusId(building.getCampusId());
                 room.setBuildingId(buildingId);
                 
-                // 🔴 修复点：setFloor -> setFloorNo (匹配实体类字段)
+                // 楼层冗余
                 room.setFloorNo(f);
                 
                 // 智能生成房间号：
@@ -169,27 +195,36 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
                 room.setRoomNo(roomNo);
                 room.setCapacity(capacity);
                 room.setCurrentNum(0);
-                room.setGender(gender);
-                room.setStatus(1);
                 
+                // 🟢 这里传入 String 类型
+                room.setGender(genderStr);
+                
+                room.setStatus(10); // 10-正常(未满)
                 roomList.add(room);
             }
         }
         
         // 4. 批量插入房间 (Batch Insert)
-        // 这一步至关重要：MP 的 saveBatch 会在插入后将生成的 ID 回填到 roomList 的对象中
         roomService.saveBatch(roomList);
         log.info("房间批量创建完成，共 {} 间，开始生成床位...", roomList.size());
         
         // 5. 内存中批量生成床位对象
         List<DormBed> bedList = new ArrayList<>();
         for (DormRoom room : roomList) {
-            // 根据每个房间的容量生成对应数量的床位
             for (int i = 1; i <= room.getCapacity(); i++) {
                 DormBed bed = new DormBed();
+                // 🟢 补全全链路冗余字段
+                bed.setCampusId(building.getCampusId());
+                bed.setBuildingId(buildingId);
+                // bed.setFloorId(...); // 如果你之前逻辑没创建 Floor 实体，这里暂时为 null 或补上逻辑
+                
                 bed.setRoomId(room.getId()); // 使用回填的 ID
                 bed.setBedLabel(room.getRoomNo() + "-" + i); // 例如: 101-1
-                bed.setOccupantId(null); // 初始为空
+                bed.setSortOrder(i); // 1, 2, 3, 4 (方位)
+                
+                bed.setOccupantId(null);
+                bed.setStatus(0); // 0-空闲
+                
                 bedList.add(bed);
             }
         }
@@ -212,15 +247,11 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
     
     /**
      * 检测楼栋内是否有人居住
-     * @param buildingId 楼栋ID
-     * @param opName 操作名称 (用于异常提示)
-     * @throws ServiceException 如果有人居住则抛出
      */
     private void checkIfBuildingHasPeople(Long buildingId, String opName) {
-        // 查询该楼栋下，current_num > 0 的房间数量
         Long occupiedCount = roomMapper.selectCount(new LambdaQueryWrapper<DormRoom>()
                 .eq(DormRoom::getBuildingId, buildingId)
-                .gt(DormRoom::getCurrentNum, 0)); // 只有人数 > 0 才算有人
+                .gt(DormRoom::getCurrentNum, 0));
         
         if (occupiedCount != null && occupiedCount > 0) {
             throw new ServiceException(opName + "：该楼栋内仍有 " + occupiedCount + " 间宿舍有人居住！请先清退人员。");

@@ -55,12 +55,12 @@ public class DormAllocationService {
     /**
      * 【入口】执行智能分配
      *
-     * @param campusId 目标校区ID (核心隔离参数，防止跨校区分配)
-     * @param gender   指定分配性别 (1男 2女，null则全部运行)
+     * @param campusId 目标校区 ID (核心隔离参数，防止跨校区分配)
+     * @param gender  指定分配性别 ("1"-男 "0"-女，null则全部运行)
      * @return 分配结果摘要
      */
     @Transactional(rollbackFor = Exception.class)
-    public synchronized String executeAllocation(Long campusId, Integer gender) {
+    public synchronized String executeAllocation(Long campusId, String gender) {
         long startTime = System.currentTimeMillis();
         
         // 1. 资源预加载 (校区物理隔离)
@@ -89,16 +89,17 @@ public class DormAllocationService {
         // 4. 执行分流分配 (Execution)
         // ---------------------------------------------------------
         int allocatedCount = 0;
-        Map<Integer, List<SysOrdinaryUser>> genderGroups = finalUsers.stream()
-                .collect(Collectors.groupingBy(SysOrdinaryUser::getSex));
-        
-        // 男生组
-        if (genderGroups.containsKey(1)) {
-            allocatedCount += processGroupAllocation(1, genderGroups.get(1), prefMap, buildingIds);
+        Map<String, List<SysOrdinaryUser>> genderGroups = finalUsers.stream()
+                .collect(Collectors.groupingBy(SysOrdinaryUser::getGender));
+
+        // 男生组("1")
+        if (genderGroups.containsKey("1")) {
+            allocatedCount += processGroupAllocation("1", genderGroups.get("1"), prefMap, buildingIds);
         }
-        // 女生组
-        if (genderGroups.containsKey(2)) {
-            allocatedCount += processGroupAllocation(2, genderGroups.get(2), prefMap, buildingIds);
+        
+        // 女生组("0")
+        if (genderGroups.containsKey("0")) {
+            allocatedCount += processGroupAllocation("0", genderGroups.get("0"), prefMap, buildingIds);
         }
         
         // 5. 最终结果校验
@@ -111,14 +112,16 @@ public class DormAllocationService {
     /**
      * 单性别群体分配主逻辑
      */
-    private int processGroupAllocation(Integer gender, List<SysOrdinaryUser> users,
+    private int processGroupAllocation(String gender, List<SysOrdinaryUser> users,
                                        Map<Long, UserPreference> prefMap, List<Long> buildingIds) {
         if (CollUtil.isEmpty(users)) return 0;
         
         // A. 获取可用房源 (排序策略：低楼层优先 -> 同楼栋聚合)
         List<DormRoom> availableRooms = getSortedRooms(buildingIds, gender);
         if (CollUtil.isEmpty(availableRooms)) {
-            log.warn(">>> [资源告急] 性别[{}]房源不足，该批次分配跳过", gender == 1 ? "男" : "女");
+            // 🟢 修复：日志显示的性别转换逻辑
+            String genderStr = "1".equals(gender) ? "男" : "女";
+            log.warn(">>> [资源告急] 性别[{}]房源不足，该批次分配跳过", genderStr);
             return 0;
         }
         
@@ -458,7 +461,7 @@ public class DormAllocationService {
         return ids;
     }
     
-    private List<SysOrdinaryUser> loadCandidateUsers(Long campusId, Integer gender) {
+    private List<SysOrdinaryUser> loadCandidateUsers(Long campusId, String gender) {
         List<Long> collegeIds = collegeService.list(Wrappers.<SysCollege>lambdaQuery()
                         .eq(SysCollege::getCampusId, campusId))
                 .stream().map(SysCollege::getId).collect(Collectors.toList());
@@ -467,7 +470,8 @@ public class DormAllocationService {
         return userService.list(Wrappers.<SysOrdinaryUser>lambdaQuery()
                 .in(SysOrdinaryUser::getCollegeId, collegeIds)
                 .eq(SysOrdinaryUser::getStatus, "0")
-                .eq(gender != null, SysOrdinaryUser::getSex, gender));
+                // 🟢 核心修复：getSex -> getGender
+                .eq(StrUtil.isNotBlank(gender), SysOrdinaryUser::getGender, gender));
     }
     
     private List<SysOrdinaryUser> filterOccupiedUsers(List<SysOrdinaryUser> users) {
@@ -488,7 +492,7 @@ public class DormAllocationService {
         return map;
     }
     
-    private List<DormRoom> getSortedRooms(List<Long> buildingIds, Integer gender) {
+    private List<DormRoom> getSortedRooms(List<Long> buildingIds, String gender) {
         return roomService.list(Wrappers.<DormRoom>lambdaQuery()
                         .in(DormRoom::getBuildingId, buildingIds)
                         .eq(DormRoom::getGender, gender)
