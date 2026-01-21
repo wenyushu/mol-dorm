@@ -37,4 +37,7 @@ public class LoginVO {
     // (注意：nullable=true 在某些 Swagger 版本可能不生效，若不生效可直接在 Apifox 界面改)
     @Schema(description = "头像地址", example = "http://...", nullable = true)
     private String avatar;
+    
+    // 新增：告诉前端是否需要强制改密
+    private Boolean needChangePwd;
 }

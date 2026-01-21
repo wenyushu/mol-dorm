@@ -91,7 +91,6 @@ public class DormBedServiceImpl extends ServiceImpl<DormBedMapper, DormBed> impl
         // --- 5. 性别熔断机制 ---
         if (!StrUtil.equals(room.getGender(), userGender)) {
             String roomLimit = "1".equals(room.getGender()) ? "男寝" : "女寝";
-            // 🟢 修复点：直接使用局部变量 userGender，而不是调用那个 dummy 方法
             String userSex = "1".equals(userGender) ? "男" : "女";
             throw new ServiceException("性别严重不符：试图将 [" + userSex + "] 性用户分配至 [" + roomLimit + "]");
         }
@@ -99,30 +98,31 @@ public class DormBedServiceImpl extends ServiceImpl<DormBedMapper, DormBed> impl
         // --- 6. 执行分配 ---
         boolean updateBed = this.update(Wrappers.<DormBed>lambdaUpdate()
                 .eq(DormBed::getId, bedId)
-                .eq(DormBed::getStatus, 0)
+                .eq(DormBed::getStatus, 0) // 乐观锁：确保这期间没人抢
                 .set(DormBed::getOccupantId, userId)
                 .set(DormBed::getOccupantType, userType)
-                .set(DormBed::getStatus, 1));
+                .set(DormBed::getStatus, 1)); // 1-占用
         
         if (!updateBed) {
             throw new ServiceException("手慢了！该床位刚刚被抢占或状态已变更");
         }
         
-        // --- 7. 联动维护房间数据 ---
-        synchronized (this) {
-            roomMapper.incrementCurrentNum(room.getId());
-            DormRoom updatedRoom = roomMapper.selectById(room.getId());
-            if (updatedRoom.getCurrentNum() >= updatedRoom.getCapacity()) {
-                updatedRoom.setStatus(20);
-                roomMapper.updateById(updatedRoom);
-            }
+        // --- 7. 联动维护房间数据 (原子更新) ---
+        // 🟢 修正：使用 increaseOccupancy(id, count)
+        roomMapper.increaseOccupancy(room.getId(), 1);
+        
+        // 刷新房间状态 (用于UI展示)
+        DormRoom updatedRoom = roomMapper.selectById(room.getId());
+        if (updatedRoom.getCurrentNum() >= updatedRoom.getCapacity()) {
+            updatedRoom.setStatus(20); // 满员
+            roomMapper.updateById(updatedRoom);
         }
         
         // --- 8. 联动维护用户状态 ---
         if (userType == 0) {
             SysOrdinaryUser updateStu = new SysOrdinaryUser();
             updateStu.setId(userId);
-            updateStu.setResidenceType(0);
+            updateStu.setResidenceType(0); // 0-住校
             ordinaryUserMapper.updateById(updateStu);
         } else {
             SysAdminUser updateAdmin = new SysAdminUser();
@@ -149,7 +149,6 @@ public class DormBedServiceImpl extends ServiceImpl<DormBedMapper, DormBed> impl
         Long occupantId = bed.getOccupantId();
         Integer occupantType = bed.getOccupantType();
         
-        // 幂等性处理：如果 occupantId 是 null，这里就会返回
         if (occupantId == null || bed.getStatus() == 0) {
             log.warn("床位[{}]已是空闲状态，无需重复退宿", bed.getBedLabel());
             return;
@@ -160,28 +159,27 @@ public class DormBedServiceImpl extends ServiceImpl<DormBedMapper, DormBed> impl
                 .eq(DormBed::getId, bedId)
                 .set(DormBed::getOccupantId, null)
                 .set(DormBed::getOccupantType, null)
-                .set(DormBed::getStatus, 0));
+                .set(DormBed::getStatus, 0)); // 0-空闲
         
         if (!success) {
             throw new ServiceException("退宿失败，数据可能已被并发修改");
         }
         
-        // --- 2. 维护房间数据 ---
+        // --- 2. 维护房间数据 (原子更新) ---
         DormRoom room = roomMapper.selectById(bed.getRoomId());
         if (room != null) {
-            if (room.getCurrentNum() > 0) {
-                roomMapper.decrementCurrentNum(room.getId());
-            }
+            // 🟢 修正：使用 decreaseOccupancy(id, count)
+            roomMapper.decreaseOccupancy(room.getId(), 1);
+            
+            // 刷新房间状态 (如果之前是满员，现在有人走了，要改回正常)
             DormRoom latestRoom = roomMapper.selectById(room.getId());
             if (latestRoom.getStatus() == 20 && latestRoom.getCurrentNum() < latestRoom.getCapacity()) {
-                latestRoom.setStatus(10);
+                latestRoom.setStatus(10); // 10-正常
                 roomMapper.updateById(latestRoom);
             }
         }
         
         // --- 3. 维护用户状态 ---
-        // 🟢 修复点：移除了 occupantId != null 的冗余判断
-        // 因为如果 occupantId 为 null，代码在上面就已经 return 了，能走到这里说明它一定有值
         if (occupantType != null) {
             if (occupantType == 0) {
                 SysOrdinaryUser user = new SysOrdinaryUser();
@@ -191,17 +189,13 @@ public class DormBedServiceImpl extends ServiceImpl<DormBedMapper, DormBed> impl
             } else {
                 SysAdminUser admin = new SysAdminUser();
                 admin.setId(occupantId);
-                admin.setResidenceType(1); // 1-校外/未住
+                admin.setResidenceType(1);
                 adminUserMapper.updateById(admin);
             }
         }
         
         log.info("👋 退宿成功: 床位[{}]，原住户[{}]", bed.getBedLabel(), occupantId);
     }
-    
-    // =================================================================================================
-    // 辅助查询
-    // =================================================================================================
     
     @Override
     public DormBed getBedDetail(Long bedId) {

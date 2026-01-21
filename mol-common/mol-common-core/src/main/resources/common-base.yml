@@ -7,7 +7,7 @@ spring:
   # 1. 数据库连接池通用配置
   datasource:
     driver-class-name: com.mysql.cj.jdbc.Driver
-    # url: 注意 serverTimezone 必须指定，否则 Java 写入时间可能与数据库差 8 小时
+    # url: 注意 serverTimezone 必须指定（Asia/Shanghai），否则 Java 写入时间可能与数据库差 8 小时
     url: jdbc:mysql://localhost:3306/mol-dorm?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
     username: root
     password: 123456              # 请在此处填入你的 MySQL 密码
@@ -17,13 +17,13 @@ spring:
       idle-timeout: 30000         # 连接空闲超时时间（毫秒）
       connection-timeout: 30000   # 等待连接池分配连接的最大时长
 
-  # 2. Redis 核心配置
+  # 2. Redis 核心配置(Sa-Token 和 缓存 强依赖)
   data:
     redis:
       host: localhost             # Redis 服务器地址
       port: 6379                  # Redis 端口
       password: a1b2c3            # 在这里填入你的本地 Redis 密码
-      database: 1                 # Redis数据库索引（默认为0）
+      database: 1                 # Redis数据库索引（默认为0），推荐使用 1 号库，与系统缓存分开
       timeout: 5000ms             # 连接超时时间
       lettuce:
         pool:
@@ -33,8 +33,8 @@ spring:
 
   # 3. 全局 JSON 序列化配置 (Jackson)
   jackson:
-    date-format: yyyy-MM-dd HH:mm:ss # 前端接收到的日期格式
-    time-zone: GMT+8                # 强制使用东八区时间
+    date-format: yyyy-MM-dd HH:mm:ss    # 前端接收到的日期格式
+    time-zone: GMT+8                    # 强制使用东八区时间
 
 # ===================================================================
 # MyBatis-Plus 全局配置
@@ -42,23 +42,57 @@ spring:
 mybatis-plus:
   global-config:
     db-config:
-      id-type: assign_id          # 主键策略：自动分配雪花算法 ID (适合分布式)
-      # 移除了 logic-delete 相关配置，现在调用 removeById 就是真实的 DELETE 语句
+      id-type: assign_id                    # 主键策略：自动分配雪花算法 ID (适合分布式)
+      # 由于移除了 logic-delete 相关配置，现在调用 removeById 就是真实的 DELETE 语句
   configuration:
-    map-underscore-to-camel-case: true # 自动开启驼峰命名转换 (数据库 a_column -> 实体类 aColumn)
-    cache-enabled: false               # 禁用 MyBatis 一级缓存，避免分布式环境下产生脏数据
+    map-underscore-to-camel-case: true      # 自动开启驼峰命名转换 (数据库 a_column -> 实体类 aColumn)
+    cache-enabled: false                    # 禁用 MyBatis 一级缓存，避免分布式环境下产生脏数据
 
 # ===================================================================
-# Sa-Token 权限基础配置
+# Sa-Token 权限基础配置(前后端分离/App 专用版)
 # ===================================================================
 sa-token:
-  token-name: mol-token           # Token 在 Header 或 Cookie 中的键名
-  timeout: 2592000                # Token 有效期 (单位:秒，此处为30天)
-  active-timeout: -1              # 临时有效期 (即：多长时间无操作就过期)，-1 表示不开启
-  is-share: true                  # 是否允许账号多地同时登录
-  token-style: uuid               # Token 生成风格：UUID
-  is-print: true                  # 启动时是否在控制台打印 Sa-Token 字符画
-  is-log: false                   # 是否在控制台打印 Sa-Token 的内部操作日志
+  # 1. Token 名称 (前端 Header 传参的 key)
+  # 🟢 前端请求头必须带这个 Key，例如 -> mol-token: xxxxx-xxxx-xxxx
+  token-name: mol-token
+
+  # 2. Token 有效期 (默认 2小时)
+  # 代码中"记住我"会覆盖此时间 (7天)，未勾选"记住我"则使用此时间
+  timeout: 7200
+
+  # 3. 临时有效期 (30分钟无操作自动掉线)
+  active-timeout: 1800
+
+  # 4. 并发登录设置
+  # 🟢 设为 true，配合代码中的 device 参数，实现"同端互斥，异端共存"
+  # (即：手机和电脑可以同时在线，但新电脑登录会挤掉旧电脑)
+  is-concurrent: true
+  is-share: true                  # 允许账号多地同时登录
+
+  # 5. Token 风格
+  token-style: uuid               # 简单 UUID
+
+  # 6. 日志开关
+  is-log: false                   # 生产环境建议关闭
+  is-print: false                 # 关闭启动字符画
+
+  # 🟢 [核心] 前后端分离/无Cookie模式配置 🟢
+  is-read-cookie: false           # 关闭 Cookie 读取 (防止浏览器自动带 Cookie 干扰判断)
+  is-read-body: false             # 关闭 Body 读取 (规范性)
+  is-read-head: true              # 强制从 Header 读取 Token
+
+# "记住我" 的有效期 (Remember Me)
+  # 例如 7 天 (604800秒)
+  # 我们不在配置文件里写死，而是在代码里动态设置，但这里做个备注
+
+# ===================================================================
+# Mol 业务自定义配置
+# ===================================================================
+mol:
+  security:
+    # 是否开启"初始密码强制修改"功能 (AuthServiceImpl 中用到)
+    # true: 登录时检查 is_initial_pwd，如果是 1 则提示必须改密
+    force-change-pwd: true
 
 # ===================================================================
 # Knife4j 4.x 公共 UI 增强配置

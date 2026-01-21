@@ -15,7 +15,7 @@ public class LoginBody {
     
     @NotBlank(message = "账号不能为空")
     @Size(min = 2, max = 64, message = "账号长度需在2-64字符之间")
-    @Schema(description = "登录账号 (学号/工号/管理员名)", example = "2024001")
+    @Schema(description = "登录账号 (学号/工号/管理员名)", example = "admin")
     private String username;
     
     @NotBlank(message = "密码不能为空")
@@ -25,4 +25,13 @@ public class LoginBody {
     
     @Schema(description = "用户类型: admin-管理员, ordinary-普通用户(默认)", example = "admin")
     private String userType = "ordinary"; // 默认普通用户，防止空指针
+    
+    // 🟢 新增：记住我 (true-7天免登录, false-关闭浏览器失效)
+    @Schema(description = "是否记住我")
+    private Boolean rememberMe;
+    
+    // 🟢 新增：设备类型 (用于互斥登录区分设备)
+    // 建议值：PC, APP, WEB
+    @Schema(description = "登录设备标识", example = "PC")
+    private String device;
 }

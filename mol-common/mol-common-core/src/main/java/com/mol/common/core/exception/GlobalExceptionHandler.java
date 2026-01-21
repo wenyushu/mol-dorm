@@ -1,22 +1,25 @@
 package com.mol.common.core.exception;
 
 import cn.dev33.satoken.exception.NotLoginException;
+import cn.dev33.satoken.exception.NotPermissionException;
+import cn.dev33.satoken.exception.NotRoleException;
+import cn.dev33.satoken.exception.NotSafeException;
 import com.mol.common.core.util.R;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
+import org.springframework.context.support.DefaultMessageSourceResolvable;
 import org.springframework.validation.BindException;
-import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
-import java.util.List;
 import java.util.stream.Collectors;
 
 /**
- * 全局异常处理器
- * 通过 AOP 切面拦截 Controller 抛出的异常，并转换为标准的 R 格式返回给前端
+ * 全局异常处理器 (最终完善版)
+ * <p>
+ * 策略调整：HTTP 状态码统一返回 200，由 JSON 中的 code 字段决定业务结果。
+ * 包含：400(参数错), 401(未登录), 403(无权限), 500(系统崩)
+ * </p>
  *
  * @author mol
  */
@@ -25,54 +28,74 @@ import java.util.stream.Collectors;
 public class GlobalExceptionHandler {
     
     /**
-     * 处理业务逻辑异常 (ServiceException)
-     * 当 Service 层手动抛出业务错误时进入此方法
+     * 拦截业务逻辑异常
      */
     @ExceptionHandler(ServiceException.class)
-    @ResponseStatus(HttpStatus.BAD_REQUEST) // 设定 HTTP 状态码为 400
-    public R<String> handleServiceException(ServiceException e) {
-        log.error("业务逻辑异常：{}", e.getMessage());
-        return R.failed(e.getMessage());
+    public R<Void> handleServiceException(ServiceException e) {
+        log.warn("业务拦截: {}", e.getMessage());
+        return R.fail(e.getMessage());
     }
     
     /**
-     * 处理参数校验异常
-     * 拦截 @Valid 或 @Validated 校验失败时抛出的异常
+     * 拦截参数校验异常 (@RequestBody JSON参数)
      */
-    @ExceptionHandler({MethodArgumentNotValidException.class, BindException.class})
-    @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public R<String> handleBodyValidException(MethodArgumentNotValidException e) {
-        // 获取所有校验失败的字段信息
-        List<FieldError> fieldErrors = e.getBindingResult().getFieldErrors();
-        // 将多个错误提示合并为逗号分隔的字符串
-        String message = fieldErrors.stream()
-                .map(FieldError::getDefaultMessage)
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public R<Void> handleJsonValidException(MethodArgumentNotValidException e) {
+        String message = e.getBindingResult().getFieldErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
                 .collect(Collectors.joining(", "));
-        log.warn("客户端请求参数校验失败: {}", message);
-        return R.failed(message);
+        log.warn("JSON参数校验失败: {}", message);
+        return R.fail(message);
     }
     
     /**
-     * 处理系统未捕获的异常 (兜底)
-     * 拦截代码中未预料到的 RuntimeException 或 Exception
+     * 拦截参数校验异常 (普通表单参数)
      */
-    @ExceptionHandler(Exception.class)
-    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR) // 设定 HTTP 状态码为 500
-    public R<String> handleGlobalException(Exception e) {
-        // 打印完整的堆栈信息，方便后台排查问题
-        log.error("系统运行出现未捕获异常 ex={}", e.getMessage(), e);
-        return R.failed("系统内部错误，请联系管理员");
+    @ExceptionHandler(BindException.class)
+    public R<Void> handleBindException(BindException e) {
+        String message = e.getAllErrors().stream()
+                .map(DefaultMessageSourceResolvable::getDefaultMessage)
+                .collect(Collectors.joining(", "));
+        log.warn("表单参数校验失败: {}", message);
+        return R.fail(message);
     }
     
-    
     /**
-     * 拦截未登录异常
-     * 返回 401 状态码，告知前端跳转登录页
+     * 拦截未登录异常 (401)
      */
     @ExceptionHandler(NotLoginException.class)
     public R<Void> handleNotLoginException(NotLoginException e) {
-        // 打印简短日志即可，无需打印堆栈
-        log.warn("用户未登录或 Token 失效: {}", e.getMessage());
-        return R.fail(401, "Token 已失效，请重新登录");
+        log.warn("认证失败: {}", e.getMessage());
+        return R.fail(401, "登录已过期，请重新登录");
+    }
+    
+    /**
+     * 拦截二级认证异常
+     * 返回特定状态码 (例如 402 或 自定义业务码)，告知前端需要弹窗输密码
+     */
+    @ExceptionHandler(NotSafeException.class)
+    public R<Void> handleNotSafeException(NotSafeException e) {
+        log.warn("二级认证拦截: {}", e.getMessage());
+        // 建议约定一个 code，例如 901 代表 "需要二级认证"
+        return R.fail(901, "此操作需要二级认证，请验证密码");
+    }
+    
+    /**
+     * 拦截无权限/无角色异常 (403)
+     * 防止学生访问管理员接口时报 500
+     */
+    @ExceptionHandler({NotPermissionException.class, NotRoleException.class})
+    public R<Void> handleNotPermissionException(Exception e) {
+        log.warn("越权访问拦截: {}", e.getMessage());
+        return R.fail(403, "您没有操作该功能的权限");
+    }
+    
+    /**
+     * 拦截系统兜底异常 (500)
+     */
+    @ExceptionHandler(Exception.class)
+    public R<Void> handleGlobalException(Exception e) {
+        log.error("系统严重错误 ex={}", e.getMessage(), e);
+        return R.fail(500, "系统繁忙，请稍后重试");
     }
 }

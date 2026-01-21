@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
  * 系统管理员管理控制器
  * <p>
  * 仅限超级管理员 (Super Admin) 操作。
- * 用于维护宿管、后勤等工作人员的账号。
+ * 用于维护宿管、后勤等工作人员的账号。这些账号拥有较高的系统权限。
  * </p>
  */
 @Tag(name = "用户管理-系统管理员", description = "宿管/后勤人员的账号维护")
@@ -30,7 +30,7 @@ public class SysAdminUserController {
     
     
     @Operation(summary = "分页查询管理员", description = "仅超管可查")
-    @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 权限锁
+    @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 权限锁：最高级别
     @GetMapping("/page")
     public R<IPage<SysAdminUser>> page(
             @Parameter(description = "页码") @RequestParam(defaultValue = "1") Integer pageNum,
@@ -43,13 +43,13 @@ public class SysAdminUserController {
                 .orderByDesc(SysAdminUser::getCreateTime)
                 .page(new Page<>(pageNum, pageSize));
         
-        // 密码脱敏
+        // 🛡️ 安全处理：密码脱敏，绝对不能回显
         result.getRecords().forEach(u -> u.setPassword(null));
         return R.ok(result);
     }
     
     
-    @Operation(summary = "新增管理员 (宿管/后勤)", description = "默认密码123456")
+    @Operation(summary = "新增管理员 (宿管/后勤)", description = "新增系统管理人员，默认密码通常为123456")
     @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 权限锁：只有超管能建人
     @PostMapping
     public R<Boolean> save(@RequestBody SysAdminUser admin) {
@@ -69,18 +69,22 @@ public class SysAdminUserController {
     @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 权限锁
     @DeleteMapping("/{id}")
     public R<Boolean> remove(@PathVariable Long id) {
-        // 防止自杀 (不能删 ID 为 1 的超管)
+        // 🛡️ 防刁民：防止自杀
+        // 假设 ID 为 1 的是初始超级管理员，严禁删除，防止系统无人可管
         if (id == 1L) {
-            return R.fail("无法删除超级管理员");
+            return R.fail("无法删除超级管理员账号");
         }
         return R.ok(adminUserService.removeById(id));
     }
     
     
-    @Operation(summary = "重置管理员密码", description = "强制重置")
+    @Operation(summary = "重置管理员密码", description = "强制重置某管理员的密码")
     @SaCheckRole(RoleConstants.SUPER_ADMIN) // 🔒 权限锁
     @PostMapping("/reset-pwd")
-    public R<Void> resetPwd(@RequestParam Long userId, @RequestParam String newPassword) {
+    public R<Void> resetPwd(
+            @Parameter(description = "管理员 ID") @RequestParam Long userId,
+            @Parameter(description = "新密码") @RequestParam String newPassword) {
+        
         adminUserService.resetPassword(userId, newPassword);
         return R.ok();
     }

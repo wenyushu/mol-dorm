@@ -19,4 +19,10 @@ public interface AuthService {
      * 注销逻辑
      */
     void logout();
+    
+    /**
+     * 开启二级认证 (Safe Mode)
+     * @param password 用户密码
+     */
+    void openSafeMode(String password);
 }

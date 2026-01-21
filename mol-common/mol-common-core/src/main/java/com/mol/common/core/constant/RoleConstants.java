@@ -23,7 +23,7 @@ public class RoleConstants {
     public static final String REPAIR_MASTER = "repair_master";
     /** 行政辅导员 */
     public static final String COUNSELOR = "counselor";
-    /** 学院的教职工或/兼职辅导员 (对应数据库 college_teacher) */
+    /** 学院的教职工或/兼职辅导员 (对应数据库 college_teacher,且值与数据库 sys_role 表一致) */
     public static final String COLLEGE_TEACHER = "college_teacher";
     
     // ================== 4. 四级权限 (普通用户) ==================

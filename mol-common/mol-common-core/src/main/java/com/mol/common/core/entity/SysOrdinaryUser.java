@@ -2,6 +2,7 @@ package com.mol.common.core.entity;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.annotation.*;
+import com.mol.common.core.handler.EncryptTypeHandler;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.*;
 import lombok.Data;
@@ -21,7 +22,7 @@ import java.time.LocalDate;
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
-@TableName("sys_ordinary_user")
+@TableName(value = "sys_ordinary_user", autoResultMap = true) // 🟢 必须加 autoResultMap = true
 @Schema(description = "普通用户(学生/教工)对象")
 public class SysOrdinaryUser extends BaseEntity {
     
@@ -40,6 +41,10 @@ public class SysOrdinaryUser extends BaseEntity {
     
     @Schema(description = "加密密码")
     private String password;
+    
+    // 默认初始密码为：123456
+    @Schema(description = "是否为初始密码 (1:是 0:否)")
+    private Integer isInitialPwd;
     
     @Schema(description = "真实姓名")
     private String realName;
@@ -64,11 +69,13 @@ public class SysOrdinaryUser extends BaseEntity {
     // 🟢 1. 身份证 (非空)
     @NotBlank(message = "身份证号不能为空")
     @Schema(description = "身份证号")
+    @TableField(typeHandler = EncryptTypeHandler.class) // 🔒 加密
     private String idCard;
     
     // 🟢 2. 手机号 (非空)
     @NotBlank(message = "手机号不能为空")
     @Schema(description = "本人手机号")
+    @TableField(typeHandler = EncryptTypeHandler.class) // 🔒 加密
     private String phone;
     
     // 🟢 3. 账户类别 (非空)
@@ -84,8 +91,17 @@ public class SysOrdinaryUser extends BaseEntity {
     
     // ----------- 归属信息 -----------
     
-    @Schema(description = "所属学院 ID")
+    @Schema(description = "所属校区 ID", example = "1")
+    private Long campusId;
+    
+    @Schema(description = "合同年限 (仅教职工)", example = "3")
+    private Integer contractYear;
+    
+    @Schema(description = "学院 ID")
     private Long collegeId;
+    
+    @Schema(description = "部门 ID")
+    private Long deptId;
     
     @Schema(description = "所属专业 ID (仅学生)")
     private Long majorId;
@@ -93,8 +109,6 @@ public class SysOrdinaryUser extends BaseEntity {
     @Schema(description = "所属班级 ID (仅学生)")
     private Long classId;
     
-    @Schema(description = "部门 ID (教职工用)")
-    private Long deptId;
     
     // ----------- 详细档案信息 -----------
     
@@ -126,6 +140,7 @@ public class SysOrdinaryUser extends BaseEntity {
     
     @NotBlank(message = "紧急联系电话不能为空")
     @Schema(description = "紧急联系人电话")
+    @TableField(typeHandler = EncryptTypeHandler.class) // 🔒 加密
     private String emergencyPhone;
     
     @NotBlank(message = "紧急联系人关系不能为空")
@@ -141,6 +156,7 @@ public class SysOrdinaryUser extends BaseEntity {
     private Integer residenceType;
     
     @Schema(description = "校外居住地址")
+    @TableField(typeHandler = EncryptTypeHandler.class) // 🔒 加密
     private String currentAddress;
     
     @Schema(description = "入学/入职时间")
@@ -157,12 +173,10 @@ public class SysOrdinaryUser extends BaseEntity {
     @TableLogic
     private String delFlag;
     
-    /**
-     * 入学/入职年份 (YYYY)
-     * 用于生成学号前缀，不存入 sys_ordinary_user 表 (存入 stu_profile)
-     */
-    @TableField(exist = false)
-    @Schema(description = "入学/入职年份 (前端传参用)")
+    @Schema(description = "入学年份")
+    private Integer enrollmentYear;
+    
+    @Schema(description = "入职年份")
     private Integer entryYear;
     
     /**

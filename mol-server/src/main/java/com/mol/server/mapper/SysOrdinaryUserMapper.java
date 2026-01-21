@@ -3,6 +3,7 @@ package com.mol.server.mapper;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.mol.common.core.entity.SysOrdinaryUser; // 确保引用了正确的 Entity
 import org.apache.ibatis.annotations.Mapper;
+import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
 /**
@@ -16,12 +17,10 @@ public interface SysOrdinaryUserMapper extends BaseMapper<SysOrdinaryUser> {
     // MyBatis-Plus 已内置 CRUD，无需手写 SQL
     
     /**
-     * 【核心兜底方法】
-     * 查找指定前缀的当前最大账号
-     * 例如查询 "2026B01%"，数据库里最大的是 "2026B010045"，则返回该字符串
-     * * @param prefix 学号/工号前缀 (如 2026B01)
-     * @return 当前最大的完整账号
+     * 🟢 [新增] 查找指定前缀下的最大账号
+     * 用于 Redis 缓存丢失时的兜底恢复
+     * 例如: prefix='2026B05', 库里有 '2026B050001', '2026B050003' -> 返回 '2026B050003'
      */
     @Select("SELECT username FROM sys_ordinary_user WHERE username LIKE CONCAT(#{prefix}, '%') ORDER BY username DESC LIMIT 1")
-    String selectMaxUsernameByPrefix(String prefix);
+    String selectMaxUsernameByPrefix(@Param("prefix") String prefix);
 }

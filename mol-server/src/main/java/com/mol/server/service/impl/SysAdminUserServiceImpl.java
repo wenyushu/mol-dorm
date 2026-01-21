@@ -1,7 +1,7 @@
 package com.mol.server.service.impl;
 
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.digest.BCrypt;
+import cn.hutool.crypto.digest.BCrypt; // 🟢 确认使用 Hutool
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
@@ -34,7 +34,7 @@ public class SysAdminUserServiceImpl extends ServiceImpl<SysAdminUserMapper, Sys
             throw new ServiceException("真实姓名不能为空");
         }
         
-        // 2. 账号查重 (确保 username 唯一)
+        // 2. 账号查重
         long count = this.count(new LambdaQueryWrapper<SysAdminUser>()
                 .eq(SysAdminUser::getUsername, admin.getUsername()));
         if (count > 0) {
@@ -42,13 +42,13 @@ public class SysAdminUserServiceImpl extends ServiceImpl<SysAdminUserMapper, Sys
         }
         
         // 3. 密码加密 (默认 123456)
-        if (StrUtil.isBlank(admin.getPassword())) {
-            admin.setPassword("123456");
-        }
-        // 使用 BCrypt 加密存储，与 AuthService 登录逻辑对应
-        admin.setPassword(BCrypt.hashpw(admin.getPassword(), BCrypt.gensalt()));
+        String rawPwd = StrUtil.isBlank(admin.getPassword()) ? "123456" : admin.getPassword();
+        admin.setPassword(BCrypt.hashpw(rawPwd, BCrypt.gensalt()));
         
-        // 4. 设置默认状态 (0-正常)
+        // 🟢 核心新增：显式标记为初始密码状态 (1)
+        admin.setIsInitialPwd(1);
+        
+        // 4. 设置默认状态
         if (StrUtil.isBlank(admin.getStatus())) {
             admin.setStatus("0");
         }
@@ -59,7 +59,7 @@ public class SysAdminUserServiceImpl extends ServiceImpl<SysAdminUserMapper, Sys
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateAdmin(SysAdminUser admin) {
-        // 禁止通过此接口修改密码或账号
+        // 🛡️ 防御：禁止通过此 update 接口修改密码或账号 (应走专门的 updatePassword 接口)
         admin.setPassword(null);
         admin.setUsername(null);
         return this.updateById(admin);
@@ -72,10 +72,8 @@ public class SysAdminUserServiceImpl extends ServiceImpl<SysAdminUserMapper, Sys
             throw new ServiceException("密码长度不能少于6位");
         }
         
-        // 加密新密码
         String encodePwd = BCrypt.hashpw(newPassword, BCrypt.gensalt());
         
-        // 更新数据库
         this.update(Wrappers.<SysAdminUser>lambdaUpdate()
                 .eq(SysAdminUser::getId, userId)
                 .set(SysAdminUser::getPassword, encodePwd));
