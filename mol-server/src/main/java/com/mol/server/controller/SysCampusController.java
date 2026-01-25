@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -45,6 +46,7 @@ public class SysCampusController {
                 .orderByDesc(SysCampus::getId)));
     }
     
+    
     @SaCheckLogin
     @Operation(summary = "分页查询校区")
     @GetMapping("/page")
@@ -57,6 +59,7 @@ public class SysCampusController {
         return R.ok(campusService.page(new Page<>(pageNum, pageSize)));
     }
     
+    
     @SaCheckLogin
     @Operation(summary = "根据 ID 获取详情")
     @GetMapping("/{id}")
@@ -64,14 +67,17 @@ public class SysCampusController {
         return R.ok(campusService.getById(id));
     }
     
+    
     // 🔒 权限锁：只有超级管理员能执行
     @SaCheckRole(RoleConstants.SUPER_ADMIN)
     @Operation(summary = "新增校区")
     @PostMapping
-    public R<Boolean> save(@RequestBody SysCampus campus) {
+    // 加上 @Validated，触发实体类里的 @NotBlank 校验
+    public R<Boolean> save(@RequestBody @Validated SysCampus campus) {
         // 🟢 切换：使用我们重写的 addCampus (带编码查重)
         return R.ok(campusService.addCampus(campus));
     }
+    
     
     // 🔒 权限锁：只有超级管理员能执行
     @SaCheckRole(RoleConstants.SUPER_ADMIN)
@@ -82,20 +88,23 @@ public class SysCampusController {
         return R.ok(campusService.updateCampus(campus));
     }
     
+    
+    
+    // ==========================================================
+    // 🟢 最终修正：删除接口
+    // ==========================================================
     // 🔒 权限锁：只有超级管理员能执行
+    @Operation(summary = "删除校区", description = "删除前会自动触发事件检查是否包含宿舍楼。")
     @SaCheckRole(RoleConstants.SUPER_ADMIN)
-    @Operation(summary = "删除校区", description = "删除前会自动校验该校区下是否存在楼栋")
     @DeleteMapping("/{id}")
     public R<Boolean> remove(@PathVariable Long id) {
-        // =================================================
-        // 🛡️ 级联检查 (防刁民核心防线)
-        // =================================================
-
-        // 1. 发布“准备删除”事件
-        // 如果 Dorm 模块监听到这个校区还有楼，它会直接抛出异常，打断后续代码
+        // 1. 【发布事件】：广播 "我要删校区了"
+        // 你的 DormCampusDeleteListener 会监听到这个事件
+        // 如果它发现有楼，会直接 throw ServiceException，代码就会在这里中断，不会往下走。
         eventPublisher.publishEvent(new CampusDeleteEvent(this, id));
         
-        // 2. 如果上面没报错，说明校验通过，执行删除
+        // 2. 【执行删除】：如果上面没抛异常，说明监听器放行了
+        // Service 内部会继续检查 "有没有人"，如果也没人，就真的删了
         return R.ok(campusService.removeCampus(id));
     }
 }

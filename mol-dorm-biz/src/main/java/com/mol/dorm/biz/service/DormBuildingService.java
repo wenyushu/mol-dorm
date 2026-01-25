@@ -34,4 +34,11 @@ public interface DormBuildingService extends IService<DormBuilding> {
      * @param dto 初始化参数
      */
     void initBuilding(BuildingInitDto dto);
+    
+    /**
+     * 根据校区 ID 统计楼栋数量 (用于删除校区前的校验)
+     * @param campusId 校区ID
+     * @return 该校区下的楼栋数
+     */
+    long countByCampusId(Long campusId);
 }

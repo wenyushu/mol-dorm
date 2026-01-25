@@ -55,3 +55,6 @@ server:
   port: 9090
   servlet:
     context-path: /api
+    multipart:
+      max-file-size: 5MB      # 单个文件大小限制 (头像一般不需要太大)
+      max-request-size: 10MB  # 单次请求总大小限制

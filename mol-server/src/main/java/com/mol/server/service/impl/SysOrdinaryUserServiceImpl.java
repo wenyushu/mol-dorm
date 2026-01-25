@@ -1,36 +1,49 @@
 package com.mol.server.service.impl;
 
+import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.IdcardUtil;
 import cn.hutool.core.util.StrUtil;
 import cn.hutool.crypto.digest.BCrypt;
+import cn.idev.excel.FastExcel;
+import cn.idev.excel.read.listener.PageReadListener;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.mol.common.core.entity.SysOrdinaryUser;
+import com.mol.common.core.entity.*;
 import com.mol.common.core.entity.SysUserRole;
 import com.mol.common.core.exception.ServiceException;
 import com.mol.server.component.UsernameGenerator;
-import com.mol.server.entity.SysMajor;
+import com.mol.server.entity.*;
 import com.mol.server.mapper.SysOrdinaryUserMapper;
 import com.mol.server.mapper.SysUserRoleMapper;
-import com.mol.server.service.SysMajorService;
-import com.mol.server.service.SysOrdinaryUserService;
+import com.mol.server.service.*;
+import com.mol.server.vo.StudentExportVO;
+import com.mol.server.vo.StudentImportVO;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.time.Year;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * 普通用户(学生/教职工) 核心业务实现类
  * <p>
- * 核心功能：
- * 1. 用户档案管理 (增删改查)
- * 2. 账号自动生成 (基于 Redis 原子计数)
- * 3. 密码安全管理 (BCrypt 加密)
- * 4. 身份证信息智能解析
+ * 核心职责：
+ * 1. 用户档案的全生命周期管理（新增、修改、重置密码）。
+ * 2. 批量数据导入/导出（基于 FastExcel，支持名称与ID互转）。
+ * 3. 账号安全策略（自动生成学号、BCrypt加密、初始密码强制修改）。
  * </p>
  *
  * @author mol
@@ -40,239 +53,397 @@ import java.util.regex.Pattern;
 @RequiredArgsConstructor
 public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMapper, SysOrdinaryUser> implements SysOrdinaryUserService {
     
-    // 注入自定义的 ID 生成器组件 (非静态)
+    // --- 核心组件注入 ---
+    
+    // ID 生成器 (按规则生成学号/工号)
     private final UsernameGenerator usernameGenerator;
-    // 注入专业服务，用于查询专业所属学院
-    private final SysMajorService majorService;
-    // 注入角色关联 Mapper，用于分配初始角色
+    // 角色关联 Mapper (分配默认角色)
     private final SysUserRoleMapper userRoleMapper;
     
+    // --- 基础数据服务注入 (用于 Excel 导入导出的 "名称 <-> ID" 字典翻译) ---
+    private final SysMajorService majorService;     // 专业
+    private final SysCollegeService collegeService; // 学院
+    private final SysClassService classService;     // 班级
+    private final SysCampusService campusService;   // 校区
+    private final SysDeptService deptService;       // 部门 (行政教工)
+    
     // 🔒 账号格式防火墙正则
-    // 允许 10 到 30 位的数字和大写字母组合，拒绝特殊符号
+    // 规则：仅允许 10 到 30 位的数字和大写字母组合 (拒绝特殊符号和中文)
     private static final Pattern ACCOUNT_PATTERN = Pattern.compile("^[0-9A-Z]{10,30}$");
     
     // =================================================================================
-    // 1. 新增用户 (核心入口)
+    // 1. 新增用户 (单条录入 - 防呆版)
     // =================================================================================
     
-    /**
-     * 新增用户 (学生或教工)
-     * 包含完整的校验、生成、加密、赋权流程
-     *
-     * @param user 前端提交的用户实体
-     * @return 是否保存成功
-     */
     @Override
-    @Transactional(rollbackFor = Exception.class) // 开启事务，任何一步失败都回滚
+    @Transactional(rollbackFor = Exception.class)
     public boolean saveUser(SysOrdinaryUser user) {
-        // --- 1. 基础参数防刁民校验 ---
-        // 必须指定是学生还是老师
+        
+        // --- A. 基础参数校验 ---
         if (user.getUserCategory() == null) {
             throw new ServiceException("非法请求：必须指定用户类别 (0-学生, 1-教工)");
         }
         
-        // 年份合理性校验 (防止录入 1900 年或 3000 年的数据)
+        // 🛡️ 兜底策略：防止数据库必填字段报错 (Anti-Null)
+        if (StrUtil.isBlank(user.getEmergencyContact())) user.setEmergencyContact("未知");
+        if (StrUtil.isBlank(user.getEmergencyPhone())) user.setEmergencyPhone("无");
+        if (StrUtil.isBlank(user.getEmergencyRelation())) user.setEmergencyRelation("亲属");
+        if (StrUtil.isBlank(user.getEthnicity())) user.setEthnicity("汉族");
+        if (StrUtil.isBlank(user.getHometown())) user.setHometown("未知");
+        
+        // 年份校验 (2000年 ~ 明年)
         Integer year = user.getEntryYear();
-        if (year == null) year = user.getEnrollmentYear(); // 学生取入学年份
+        if (year == null) year = user.getEnrollmentYear();
         if (year != null) {
             int currentYear = Year.now().getValue();
-            // 限制年份范围，防止脏数据
             if (year < 2000 || year > currentYear + 1) {
-                throw new ServiceException("年份异常：只能录入2000年至今的学生/教工");
+                throw new ServiceException("年份异常：只能录入 2000 年至今的数据");
             }
         }
         
-        // 身份证强校验 (利用 Hutool 工具包)
+        // 身份证算法校验
         if (StrUtil.isNotBlank(user.getIdCard()) && !IdcardUtil.isValidCard(user.getIdCard())) {
             throw new ServiceException("身份证号码无效，请核对后重新输入");
         }
         
-        // --- 2. 智能填充 (从身份证解析生日、籍贯、性别) ---
-        // 减少人工录入工作量，提高数据准确性
+        // --- B. 智能填充 ---
         parseIdCardInfo(user);
         
-        // --- 3. 账号生成与安全审查 ---
+        // --- C. 账号生成与审查 ---
         if (StrUtil.isBlank(user.getUsername())) {
-            // A. 自动生成模式：调用 Redis 生成器生成唯一学号/工号
+            // C1. 自动生成
             String generatedAccount = generateUniqueAccount(user);
-            
-            // B. 正则防火墙审查 (防止生成器出现异常字符)
+            // 防火墙二重校验
             if (!ACCOUNT_PATTERN.matcher(generatedAccount).matches()) {
-                log.error("账号生成安全阻断 -> 生成结果: {}", generatedAccount);
-                throw new ServiceException("系统内部安全拦截：生成的账号格式异常，请联系管理员");
+                log.error("账号生成异常: {}", generatedAccount);
+                throw new ServiceException("系统生成账号格式异常，请联系管理员");
             }
             user.setUsername(generatedAccount);
         } else {
-            // C. 手动输入模式：严格校验格式
+            // C2. 手动录入
             if (!ACCOUNT_PATTERN.matcher(user.getUsername()).matches()) {
                 throw new ServiceException("账号格式错误！仅允许10-30位数字和大写字母组合");
             }
-            // D. 查重校验 (防止学号冲突)
             if (checkUsernameExists(user.getUsername())) {
-                throw new ServiceException("该账号已存在: " + user.getUsername());
+                throw new ServiceException("账号已存在: " + user.getUsername());
             }
         }
         
-        // --- 4. 密码安全兜底 ---
+        // --- D. 密码处理 ---
         String rawPwd = user.getPassword();
         if (StrUtil.isBlank(rawPwd)) {
-            // 默认密码策略：有身份证取后6位，无身份证默认为 123456
+            // 默认密码：身份证后6位 或 123456
             rawPwd = "123456";
             if (StrUtil.isNotBlank(user.getIdCard()) && user.getIdCard().length() >= 6) {
                 rawPwd = StrUtil.subSuf(user.getIdCard(), user.getIdCard().length() - 6);
             }
         }
-        // 🟢 核心安全：使用 BCrypt 进行哈希加密，数据库不存明文
         user.setPassword(BCrypt.hashpw(rawPwd, BCrypt.gensalt()));
+        user.setIsInitialPwd(1); // 强制改密标记
         
-        // 🟢 标记为初始密码 (登录后会强制要求修改)
-        user.setIsInitialPwd(1);
+        // --- E. 落库与赋权 ---
+        if (user.getStatus() == null) user.setStatus("0");
+        if (user.getEntryDate() == null) user.setEntryDate(LocalDate.now());
         
-        // --- 5. 设置默认状态 ---
-        if (user.getStatus() == null) user.setStatus("0"); // 0-正常
-        if (user.getEntryDate() == null) user.setEntryDate(LocalDate.now()); // 默认今日入校
-        
-        // 执行数据库保存
         boolean result = super.save(user);
-        
-        // --- 6. 自动分配角色 ---
         if (result) {
-            SysUserRole ur = new SysUserRole();
-            ur.setUserId(user.getId());
-            // 简单映射策略：0(学生)->角色ID:5, 1(教工)->角色ID:6
-            ur.setRoleId(user.getUserCategory() == 0 ? 5L : 6L);
-            userRoleMapper.insert(ur);
+            assignDefaultRole(user.getId(), user.getUserCategory());
         }
-        
         return result;
     }
     
     // =================================================================================
-    // 2. 修改用户
+    // 2. Excel 批量导入 (FastExcel - 读)
     // =================================================================================
     
-    /**
-     * 更新用户信息
-     * 注意：此方法不直接处理"改密"业务，但会处理密码字段的加密逻辑
-     *
-     * @param user 修改后的用户对象
-     * @return 是否成功
-     */
+    @Override
+    @Transactional(rollbackFor = Exception.class)
+    public void importStudent(InputStream inputStream) {
+        log.info("导入开始：正在加载基础数据字典...");
+        
+        // 🟢 1. 字典预加载 (Name -> ID)
+        // 避免在循环中查库，极大提升性能
+        Map<String, Long> campusMap = campusService.list().stream()
+                .collect(Collectors.toMap(SysCampus::getCampusName, SysCampus::getId, (v1, v2) -> v1));
+        
+        Map<String, Long> collegeMap = collegeService.list().stream()
+                .collect(Collectors.toMap(SysCollege::getName, SysCollege::getId, (v1, v2) -> v1));
+        
+        Map<String, Long> majorMap = majorService.list().stream()
+                .collect(Collectors.toMap(SysMajor::getName, SysMajor::getId, (v1, v2) -> v1));
+        
+        Map<String, Long> classMap = classService.list().stream()
+                .collect(Collectors.toMap(SysClass::getClassName, SysClass::getId, (v1, v2) -> v1));
+        
+        Map<String, Long> deptMap = deptService.list().stream()
+                .collect(Collectors.toMap(SysDept::getName, SysDept::getId, (v1, v2) -> v1));
+        
+        // 预查已有学号 (防止唯一键冲突)
+        Set<String> existUsernames = this.list().stream()
+                .map(SysOrdinaryUser::getUsername)
+                .collect(Collectors.toSet());
+        
+        log.info("字典加载完成，开始解析...");
+        
+        // 🟢 2. 流式读取与转换
+        FastExcel.read(inputStream, StudentImportVO.class, new PageReadListener<StudentImportVO>(dataList -> {
+            List<SysOrdinaryUser> saveList = new ArrayList<>();
+            List<SysUserRole> roleList = new ArrayList<>();
+            
+            for (StudentImportVO vo : dataList) {
+                // 跳过规则
+                if (StrUtil.isBlank(vo.getUsername())) continue;
+                if (existUsernames.contains(vo.getUsername())) {
+                    log.warn("导入跳过：账号[{}]已存在", vo.getUsername());
+                    continue;
+                }
+                
+                SysOrdinaryUser user = new SysOrdinaryUser();
+                
+                // 基础拷贝
+                user.setUsername(vo.getUsername());
+                user.setRealName(vo.getRealName());
+                user.setPhone(vo.getPhone());
+                user.setIdCard(vo.getIdCard());
+                // 空值防御
+                user.setEmergencyContact(StrUtil.blankToDefault(vo.getEmergencyContact(), "未知"));
+                user.setEmergencyPhone(StrUtil.blankToDefault(vo.getEmergencyPhone(), "无"));
+                user.setEmergencyRelation(StrUtil.blankToDefault(vo.getEmergencyRelation(), "亲属"));
+                user.setHometown(StrUtil.blankToDefault(vo.getHometown(), "未知"));
+                user.setEthnicity(StrUtil.blankToDefault(vo.getEthnicity(), "汉族"));
+                
+                // 逻辑转换
+                user.setGender("女".equals(vo.getGenderStr()) ? "0" : "1");
+                
+                String rawPwd = "123456";
+                if (StrUtil.isNotBlank(vo.getIdCard()) && vo.getIdCard().length() >= 6) {
+                    rawPwd = StrUtil.subSuf(vo.getIdCard(), vo.getIdCard().length() - 6);
+                }
+                user.setPassword(BCrypt.hashpw(rawPwd, BCrypt.gensalt()));
+                user.setIsInitialPwd(1);
+                user.setStatus("0");
+                user.setEntryDate(LocalDate.now());
+                
+                // 核心：名称转ID
+                user.setCampusId(campusMap.getOrDefault(vo.getCampusName(), 0L));
+                
+                boolean isStudent = StrUtil.isNotBlank(vo.getClassName());
+                user.setUserCategory(isStudent ? 0 : 1);
+                
+                if (isStudent) {
+                    user.setCollegeId(collegeMap.getOrDefault(vo.getCollegeName(), 0L));
+                    user.setMajorId(majorMap.getOrDefault(vo.getMajorName(), 0L));
+                    user.setClassId(classMap.getOrDefault(vo.getClassName(), 0L));
+                    // 尝试从学号解析入学年份
+                    if (user.getUsername().length() >= 4 && StrUtil.isNumeric(user.getUsername().substring(0, 4))) {
+                        user.setEnrollmentYear(Integer.parseInt(user.getUsername().substring(0, 4)));
+                    }
+                } else {
+                    if (StrUtil.isNotBlank(vo.getDeptName())) {
+                        user.setDeptId(deptMap.getOrDefault(vo.getDeptName(), 0L));
+                    } else if (StrUtil.isNotBlank(vo.getCollegeName())) {
+                        user.setCollegeId(collegeMap.getOrDefault(vo.getCollegeName(), 0L));
+                    }
+                    user.setContractYear(3);
+                }
+                
+                parseIdCardInfo(user);
+                saveList.add(user);
+                existUsernames.add(user.getUsername());
+            }
+            
+            // 批量落库
+            if (CollUtil.isNotEmpty(saveList)) {
+                this.saveBatch(saveList);
+                // 构造角色关联
+                for (SysOrdinaryUser u : saveList) {
+                    SysUserRole ur = new SysUserRole();
+                    ur.setUserId(u.getId());
+                    ur.setRoleId(u.getUserCategory() == 0 ? 5L : 6L);
+                    roleList.add(ur);
+                }
+                // 批量插角色
+                for (SysUserRole ur : roleList) {
+                    userRoleMapper.insert(ur);
+                }
+            }
+        })).sheet().doRead();
+    }
+    
+    // =================================================================================
+    // 3. Excel 批量导出 (FastExcel - 写)
+    // =================================================================================
+    
+    @Override
+    public void exportData(HttpServletResponse response, SysOrdinaryUser queryParams) {
+        try {
+            // 🟢 1. 查询源数据
+            // 根据 queryParams 进行筛选，复用 MyBatisPlus 逻辑
+            List<SysOrdinaryUser> userList = this.lambdaQuery()
+                    .like(StrUtil.isNotBlank(queryParams.getRealName()), SysOrdinaryUser::getRealName, queryParams.getRealName())
+                    .eq(StrUtil.isNotBlank(queryParams.getUsername()), SysOrdinaryUser::getUsername, queryParams.getUsername())
+                    .eq(queryParams.getUserCategory() != null, SysOrdinaryUser::getUserCategory, queryParams.getUserCategory())
+                    .orderByDesc(SysOrdinaryUser::getCreateTime)
+                    .list();
+            
+            // 防呆：无数据时直接报错，避免生成空 Excel 让用户困惑
+            if (CollUtil.isEmpty(userList)) {
+                throw new ServiceException("当前筛选条件下无数据，无法导出");
+            }
+            
+            log.info("导出准备：加载反向字典...");
+            
+            // 🟢 2. 字典预加载 (ID -> Name)
+            Map<Long, String> campusMap = campusService.list().stream()
+                    .collect(Collectors.toMap(SysCampus::getId, SysCampus::getCampusName));
+            
+            Map<Long, String> collegeMap = collegeService.list().stream()
+                    .collect(Collectors.toMap(SysCollege::getId, SysCollege::getName));
+            
+            Map<Long, String> majorMap = majorService.list().stream()
+                    .collect(Collectors.toMap(SysMajor::getId, SysMajor::getName));
+            
+            Map<Long, String> classMap = classService.list().stream()
+                    .collect(Collectors.toMap(SysClass::getId, SysClass::getClassName));
+            
+            Map<Long, String> deptMap = deptService.list().stream()
+                    .collect(Collectors.toMap(SysDept::getId, SysDept::getName));
+            
+            // 🟢 3. 实体转换 (Entity -> ExportVO)
+            List<StudentExportVO> exportList = userList.stream().map(user -> {
+                StudentExportVO vo = new StudentExportVO();
+                
+                // 基础拷贝
+                vo.setUsername(user.getUsername());
+                vo.setRealName(user.getRealName());
+                vo.setPhone(user.getPhone());
+                vo.setIdCard(user.getIdCard());
+                vo.setEntryYear(user.getEntryYear() != null ? user.getEntryYear() : user.getEnrollmentYear());
+                
+                // 逻辑转换
+                vo.setGender("1".equals(user.getGender()) ? "男" : "女");
+                vo.setUserCategory(user.getUserCategory() == 0 ? "学生" : "教职工");
+                vo.setStatus("0".equals(user.getStatus()) ? "正常" : "停用");
+                
+                // ID 转名称 (使用 getOrDefault 防止 ID 无效导致空指针)
+                vo.setCampusName(campusMap.getOrDefault(user.getCampusId(), ""));
+                vo.setCollegeName(collegeMap.getOrDefault(user.getCollegeId(), ""));
+                vo.setMajorName(majorMap.getOrDefault(user.getMajorId(), ""));
+                vo.setClassName(classMap.getOrDefault(user.getClassId(), ""));
+                vo.setDeptName(deptMap.getOrDefault(user.getDeptId(), ""));
+                
+                return vo;
+            }).collect(Collectors.toList());
+            
+            // 🟢 4. 写出响应流
+            response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+            response.setCharacterEncoding("utf-8");
+            String fileName = URLEncoder.encode("人员数据表_" + System.currentTimeMillis(), StandardCharsets.UTF_8).replaceAll("\\+", "%20");
+            response.setHeader("Content-Disposition", "attachment;filename*=utf-8''" + fileName + ".xlsx");
+            
+            FastExcel.write(response.getOutputStream(), StudentExportVO.class)
+                    .sheet("人员名单")
+                    .doWrite(exportList);
+            
+        } catch (IOException e) {
+            log.error("IO异常", e);
+            throw new ServiceException("文件生成失败");
+        }
+    }
+    
+    // =================================================================================
+    // 4. 修改与密码管理
+    // =================================================================================
+    
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateUser(SysOrdinaryUser user) {
-        // 如果前端传了新密码，需要加密后存入
+        // 密码加密：只有当 password 字段不为空时才加密更新，否则忽略
         if (StrUtil.isNotBlank(user.getPassword())) {
             user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
         } else {
-            // 如果没传密码，置为 null，MyBatisPlus 更新时会忽略此字段，保持原密码不变
             user.setPassword(null);
         }
         
-        // 如果修改了身份证，需要重新校验并重新解析生日等信息
+        // 身份证校验
         if (StrUtil.isNotBlank(user.getIdCard())) {
             if (!IdcardUtil.isValidCard(user.getIdCard())) {
                 throw new ServiceException("身份证格式错误");
             }
-            parseIdCardInfo(user); // 重新解析
+            parseIdCardInfo(user);
         }
         return super.updateById(user);
     }
     
-    // =================================================================================
-    // 3. 密码管理
-    // =================================================================================
-    
-    /**
-     * 管理员强制重置密码
-     *
-     * @param userId      目标用户 ID
-     * @param newPassword 新密码 (明文)
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void resetPassword(Long userId, String newPassword) {
         if (StrUtil.isBlank(newPassword) || newPassword.length() < 6) {
             throw new ServiceException("密码长度不能少于 6 位");
         }
-        
-        // 加密
         String hash = BCrypt.hashpw(newPassword, BCrypt.gensalt());
         
-        // 更新数据库，并将其标记为"初始密码"，迫使用户下次登录修改
+        // 强制重置标记
         this.lambdaUpdate()
-                .eq(SysOrdinaryUser::getId, userId) // 使用 Getter 定位 ID 字段
-                .set(SysOrdinaryUser::getPassword, hash) // 使用 Getter 定位 Password 字段
-                .set(SysOrdinaryUser::getIsInitialPwd, 1) // 必须用 Getter (getIsInitialPwd)，不能用 Setter
+                .eq(SysOrdinaryUser::getId, userId)
+                .set(SysOrdinaryUser::getPassword, hash)
+                .set(SysOrdinaryUser::getIsInitialPwd, 1)
                 .update();
     }
     
-    /**
-     * 用户自行修改密码
-     *
-     * @param userId      用户 ID
-     * @param oldPassword 旧密码
-     * @param newPassword 新密码
-     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void updatePassword(Long userId, String oldPassword, String newPassword) {
         SysOrdinaryUser user = this.getById(userId);
         if (user == null) throw new ServiceException("用户不存在");
         
-        // 1. 校验旧密码是否正确
         if (!BCrypt.checkpw(oldPassword, user.getPassword())) {
             throw new ServiceException("原密码错误");
         }
-        // 2. 校验新密码长度
-        if (newPassword.length() < 6) throw new ServiceException("新密码长度不能少于6位");
+        if (newPassword.length() < 6) throw new ServiceException("新密码长度不能少于 6 位");
         
-        // 3. 加密新密码
         user.setPassword(BCrypt.hashpw(newPassword, BCrypt.gensalt()));
-        // 4. 解除初始密码状态 (说明用户已经改过了)
-        user.setIsInitialPwd(0);
-        
+        user.setIsInitialPwd(0); // 解除初始密码状态
         this.updateById(user);
     }
     
     // =================================================================================
-    // 私有辅助方法 (必须去掉 static 关键字，否则无法调用 Bean)
+    // 私有辅助方法
     // =================================================================================
     
     /**
-     * 🟢 生成唯一账号 (调用 UsernameGenerator 组件)
-     * * 逻辑：
-     * 1. 校验生成所需的必要参数 (校区、学院/部门等)
-     * 2. 根据用户类型 (学生/教工) 调用不同的生成规则
-     * 3. 返回生成的唯一 ID
+     * 分配默认角色
+     * @param category 0-学生(角色ID:5), 1-教工(角色ID:6)
+     */
+    private void assignDefaultRole(Long userId, Integer category) {
+        SysUserRole ur = new SysUserRole();
+        ur.setUserId(userId);
+        ur.setRoleId(category == 0 ? 5L : 6L);
+        userRoleMapper.insert(ur);
+    }
+    
+    /**
+     * 生成唯一账号
      */
     private String generateUniqueAccount(SysOrdinaryUser user) {
-        // 默认取当前年份
         Integer year = user.getEnrollmentYear();
         if (year == null) year = Year.now().getValue();
         
-        // 必填项检查
         if (user.getCampusId() == null) {
             throw new ServiceException("生成账号失败：必须选择 [校区]");
         }
         
-        // === 分支 A: 学生生成逻辑 ===
         if (user.getUserCategory() == 0) {
-            // 智能补全：如果只传了 MajorId，自动查出 CollegeId 和 培养层次
             if (user.getCollegeId() == null && user.getMajorId() != null) {
-                // majorService 是注入的实例 Bean，所以此方法不能是 static
                 SysMajor major = majorService.getById(user.getMajorId());
                 if (major != null) {
                     user.setCollegeId(major.getCollegeId());
                     user.setEduLevel(convertLevelToCode(major.getLevel()));
                 }
             }
-            
-            // 再次校验完整性
             if (user.getCollegeId() == null) throw new ServiceException("生成学号失败：必须选择 [学院] 或 [专业]");
             if (user.getMajorId() == null) throw new ServiceException("生成学号失败：必须选择 [专业]");
             
-            // 调用 ID 生成器组件
             return usernameGenerator.generateStudentAccount(
                     year,
                     user.getEduLevel(),
@@ -280,14 +451,10 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
                     user.getCampusId(),
                     user.getMajorId()
             );
-        }
-        // === 分支 B: 教工生成逻辑 ===
-        else {
+        } else {
             if (user.getDeptId() == null) {
                 throw new ServiceException("生成工号失败：必须选择 [所属部门]");
             }
-            
-            // 默认合同年限 1 年
             Integer contractYear = user.getContractYear();
             if (contractYear == null) contractYear = 1;
             
@@ -301,40 +468,28 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
     }
     
     /**
-     * 🟢 从身份证解析元数据
-     * 自动填充：出生日期、籍贯、性别
+     * 身份证元数据解析
      */
     private void parseIdCardInfo(SysOrdinaryUser user) {
         String idCard = user.getIdCard();
-        // 必须有效才解析
         if (StrUtil.isBlank(idCard) || !IdcardUtil.isValidCard(idCard)) return;
-        
         try {
-            // 1. 解析生日 (yyyy MM dd)
             String birth = IdcardUtil.getBirthByIdCard(idCard);
             user.setBirthDate(LocalDate.parse(birth, DateTimeFormatter.ofPattern("yyyyMMdd")));
             
-            // 2. 解析籍贯 (仅在为空时填充，防止覆盖用户手填的详细地址)
             if (StrUtil.isBlank(user.getHometown())) {
                 user.setHometown(IdcardUtil.getProvinceByIdCard(idCard));
             }
             
-            // 3. 解析性别 (1男 0女)
             int genderVal = IdcardUtil.getGenderByIdCard(idCard);
             user.setGender(String.valueOf(genderVal));
-            
         } catch (Exception ignored) {
-            // 解析失败不阻断流程，仅打印日志
             log.warn("身份证解析失败: {}", idCard);
         }
     }
     
-    /**
-     * 辅助工具：将中文学历转为代码
-     * 本科->B, 专科->Z, 专升本->ZB, 研究生->Y, 博士->D
-     */
     private String convertLevelToCode(String levelName) {
-        if (levelName == null) return "B"; // 默认本科
+        if (levelName == null) return "B";
         if (levelName.contains("专科")) return "Z";
         if (levelName.contains("专升本")) return "ZB";
         if (levelName.contains("研究生") || levelName.contains("硕士")) return "Y";
@@ -342,9 +497,6 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
         return "B";
     }
     
-    /**
-     * 检查账号是否重复 (数据库查询)
-     */
     private boolean checkUsernameExists(String username) {
         return this.lambdaQuery().eq(SysOrdinaryUser::getUsername, username).exists();
     }

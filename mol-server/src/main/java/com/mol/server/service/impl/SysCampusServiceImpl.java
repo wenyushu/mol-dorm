@@ -3,9 +3,11 @@ package com.mol.server.service.impl;
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mol.common.core.entity.SysOrdinaryUser;
 import com.mol.common.core.exception.ServiceException;
 import com.mol.server.entity.SysCampus;
 import com.mol.server.mapper.SysCampusMapper;
+import com.mol.server.mapper.SysOrdinaryUserMapper;
 import com.mol.server.service.SysCampusService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -17,7 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
  * @author mol
  */
 @Service
-@RequiredArgsConstructor
+@RequiredArgsConstructor // 自动注入 final 字段
 public class SysCampusServiceImpl extends ServiceImpl<SysCampusMapper, SysCampus> implements SysCampusService {
     
     // ❌ 注意：不要在这里注入 DormBuildingMapper！
@@ -27,6 +29,14 @@ public class SysCampusServiceImpl extends ServiceImpl<SysCampusMapper, SysCampus
     // 如果非要检查，建议在 Controller 层先调用 buildingService.count() 检查，再调用这里的 remove。
     // 或者，定义一个通用的 CheckService 接口注入进来。
     
+    
+    // 注入用户 Mapper (同在 server 模块，可以依赖)
+    private final SysOrdinaryUserMapper userMapper;
+    
+    
+    /**
+     * 增加校区
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean addCampus(SysCampus campus) {
@@ -45,6 +55,9 @@ public class SysCampusServiceImpl extends ServiceImpl<SysCampusMapper, SysCampus
         return this.save(campus);
     }
     
+    /**
+     * 更新校区
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateCampus(SysCampus campus) {
@@ -62,22 +75,27 @@ public class SysCampusServiceImpl extends ServiceImpl<SysCampusMapper, SysCampus
     
     /**
      * 删除校区
-     * 注意：这里只负责删校区本身。
-     * "检查楼栋" 的逻辑应当在 Controller 层组装，或者通过 Spring Event 机制解耦。
-     * * 如果你强行要在这里检查，你需要引入 Dorm 模块的 Mapper，但这会破坏分层架构。
+     * 策略：
+     * 1. Service层负责检查【人员】占用。
+     * 2. Controller层负责检查【楼栋】占用 (跨模块协调)。
      */
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean removeCampus(Long campusId) {
-        // 建议：此处只做最基础的检查，比如系统默认校区不能删
-        // 🛡️ 基础防刁民：系统默认数据保护 (假设 ID 1 是本部)
+        // 1. 基础防刁民：系统默认校区禁止删除 (假设 ID=1 是本部)
         if (campusId == 1L) {
-            throw new ServiceException("系统默认校区禁止删除");
+            throw new ServiceException("系统默认校区, 禁止删除");
         }
         
-        // 注意：关于 "该校区下是否有楼栋" 的检查，
-        // 请在 Controller 层调用 DormBuildingService 进行检查，
-        // 避免在此处引入 Dorm 模块的 Mapper 导致循环依赖。
+        // 2. 检查该校区下是否有人员 (学生/教工)
+        Long userCount = userMapper.selectCount(new LambdaQueryWrapper<SysOrdinaryUser>()
+                .eq(SysOrdinaryUser::getCampusId, campusId));
+        
+        if (userCount > 0) {
+            throw new ServiceException("删除失败：该校区下尚有 " + userCount + " 名人员！请先进行人员调动。");
+        }
+        
+        // 3. 执行删除
         return super.removeById(campusId);
     }
 }

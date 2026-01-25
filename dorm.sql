@@ -491,7 +491,7 @@ CREATE TABLE `sys_admin_user` (
   `remark` varchar(500) DEFAULT NULL COMMENT '备注',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_admin_name` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=22 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-后台管理员表';
+) ENGINE=InnoDB AUTO_INCREMENT=23 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-后台管理员表';
 
 /*Data for the table `sys_admin_user` */
 
@@ -503,7 +503,8 @@ insert  into `sys_admin_user`(`id`,`username`,`password`,`real_name`,`nickname`,
 (13,'18JZG5102000004','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','周大力','金牌电工','1','13800000004',NULL,'','0',1,1,1,2,NULL,'','','','','','汉族','未知','system','2026-01-20 17:09:57','','2026-01-21 06:56:56','0','负责全校水电维修'),
 (14,'22JZG1101000005','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','陈晨','FL辅导员','0','13800000005',NULL,'','0',1,1,1,1,2,'','','','','','汉族','未知','system','2026-01-20 17:09:57','','2026-01-21 06:56:56','0','外国语学院辅导员'),
 (20,'23JZG3204000099','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','钱算盘',NULL,'0','13800900001',NULL,'','0',1,1,2,4,NULL,'','','','','','汉族','未知','system','2026-01-20 17:20:22','','2026-01-21 06:56:56','0','负责学生缴费审核'),
-(21,'24JZG3106000088','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','美羊羊',NULL,'0','13800900002',NULL,'','0',1,1,1,NULL,6,'','','','','','汉族','未知','system','2026-01-20 17:20:22','','2026-01-21 06:56:56','0','负责艺术学院学生');
+(21,'24JZG3106000088','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','美羊羊',NULL,'0','13800900002',NULL,'','0',1,1,1,NULL,6,'','','','','','汉族','未知','system','2026-01-20 17:20:22','','2026-01-21 06:56:56','0','负责艺术学院学生'),
+(22,'suguan001','$2a$10$snUzTQn..mMYe/zN97T2Lu4I66oBmclFViZDizyh3eG8M0kHAf9jm','张阿姨','一号楼宿管','0','ced3a46566ecbf95a9e95a605ab06264','zhang@mol.com','https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png','1',1,1,NULL,NULL,NULL,'','','','','','汉族','未知','1','2026-01-22 22:04:45','1','2026-01-22 22:04:45','0',NULL);
 
 /*Table structure for table `sys_algorithm_config` */
 
@@ -757,7 +758,7 @@ CREATE TABLE `sys_ordinary_user` (
   `entry_date` date DEFAULT NULL COMMENT '入学/入职日期',
   PRIMARY KEY (`id`),
   UNIQUE KEY `uk_username` (`username`)
-) ENGINE=InnoDB AUTO_INCREMENT=2010 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-普通用户表(学生/教工)';
+) ENGINE=InnoDB AUTO_INCREMENT=2011 DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='系统-普通用户表(学生/教工)';
 
 /*Data for the table `sys_ordinary_user` */
 
@@ -785,7 +786,8 @@ insert  into `sys_ordinary_user`(`id`,`username`,`password`,`real_name`,`nicknam
 (2006,'22JZG3101000002','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','孙讲师',NULL,1,'0','13800002002','110101199002020002','汉族','未知','',1,NULL,NULL,NULL,1,3,NULL,2022,0,1,'0','孙先生','13800008882','夫妻','教师公寓B座302','admin','2026-01-20 17:14:47','',NULL,'0',NULL,NULL,'群众',NULL,NULL,NULL),
 (2007,'23JZG1205000003','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','刘阿姨',NULL,1,'0','13800002003','110101197503030003','汉族','未知','',2,NULL,NULL,NULL,5,1,NULL,2023,0,1,'0','刘师傅','13800008883','夫妻','南区食堂后勤房','admin','2026-01-20 17:14:47','',NULL,'0',NULL,NULL,'群众',NULL,NULL,NULL),
 (2008,'19JZG5106000004','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','赵电工',NULL,1,'1','13800002004','110101198504040004','汉族','未知','',1,NULL,NULL,NULL,6,5,NULL,2019,0,1,'0','赵弟','13800008884','兄弟','北区配电室值班室','admin','2026-01-20 17:14:47','',NULL,'0',NULL,NULL,'群众',NULL,NULL,NULL),
-(2009,'24JZG3203000005','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','郑保安',NULL,1,'1','13800002005','110101200005050005','汉族','未知','',2,NULL,NULL,NULL,3,3,NULL,2024,0,1,'0','郑父','13800008885','父子','校外租房','admin','2026-01-20 17:14:47','',NULL,'0',NULL,NULL,'群众',NULL,NULL,NULL);
+(2009,'24JZG3203000005','$2a$10$48HUfLrTafrpSIQYH9Yulehfj.Vak/gzRvgqLb5YrOMwtGmeGPTdO','郑保安',NULL,1,'1','13800002005','110101200005050005','汉族','未知','',2,NULL,NULL,NULL,3,3,NULL,2024,0,1,'0','郑父','13800008885','父子','校外租房','admin','2026-01-20 17:14:47','',NULL,'0',NULL,NULL,'群众',NULL,NULL,NULL),
+(2010,'2401200243','$2a$10$0RRvgxvz3zzNii1fd8.p7OrIppzPK.rLh8GJXPyckJ81HA.73.smW','李长生',NULL,0,'1','841ec00dfd0cf315c121439ffbff8772','a2177ccf30f9d234f22637f785762f24b6b28b6ff42fad91434bf5782671a53d','汉族','北京市海淀区','https://cube.elemecdn.com/3/7c/3ea6beec64369c2642b92c6726f1epng.png',NULL,1,1,1,NULL,1,NULL,NULL,0,1,'1','李老爹','e1135e6aa0816760db0e3dc3b790750f','父子','','1','2026-01-22 22:42:27','1','2026-01-22 22:52:38','0',NULL,'1990-03-07','群众',NULL,NULL,'2026-01-22');
 
 /*Table structure for table `sys_role` */
 
@@ -869,7 +871,8 @@ insert  into `sys_user_role`(`user_id`,`role_id`,`create_time`,`create_by`,`upda
 (2006,6,'2026-01-20 17:15:39','system','',NULL,'0',NULL),
 (2007,8,'2026-01-20 17:15:39','system','',NULL,'0',NULL),
 (2008,8,'2026-01-20 17:15:39','system','',NULL,'0',NULL),
-(2009,7,'2026-01-20 17:15:39','system','',NULL,'0',NULL);
+(2009,7,'2026-01-20 17:15:39','system','',NULL,'0',NULL),
+(2010,5,'2026-01-22 14:42:27','system','',NULL,'0',NULL);
 
 /*Table structure for table `sys_utility_price` */
 

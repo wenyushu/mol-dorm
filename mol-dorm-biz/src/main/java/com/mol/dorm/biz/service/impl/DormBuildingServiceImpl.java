@@ -55,7 +55,6 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
     @Override
     public boolean saveBuilding(DormBuilding building) {
         // 1. 手动检查外键有效性 (逻辑外键校验)
-        // 🟢 修复后这里就可以正常使用了
         SysCampus campus = campusMapper.selectById(building.getCampusId());
         
         // 2. 校验是否存在
@@ -257,4 +256,20 @@ public class DormBuildingServiceImpl extends ServiceImpl<DormBuildingMapper, Dor
             throw new ServiceException(opName + "：该楼栋内仍有 " + occupiedCount + " 间宿舍有人居住！请先清退人员。");
         }
     }
+    
+    
+    // =========================== 3. 统计类 (补全缺失方法) ===========================
+    
+    /**
+     * 根据校区 ID 统计楼栋数量
+     * (这是为了满足 Service 接口契约，哪怕 Controller 不直接调它)
+     */
+    @Override
+    public long countByCampusId(Long campusId) {
+        // 使用 MyBatis-Plus 的 LambdaQuery 统计
+        // SELECT COUNT(*) FROM dorm_building WHERE campus_id = ?
+        return this.count(new LambdaQueryWrapper<DormBuilding>()
+                .eq(DormBuilding::getCampusId, campusId));
+    }
+    
 }

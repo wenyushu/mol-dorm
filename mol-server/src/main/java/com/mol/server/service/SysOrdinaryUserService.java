@@ -2,6 +2,9 @@ package com.mol.server.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.mol.common.core.entity.SysOrdinaryUser;
+import jakarta.servlet.http.HttpServletResponse;
+
+import java.io.InputStream;
 
 /**
  * 普通用户业务接口 (学生/教职工)
@@ -9,7 +12,7 @@ import com.mol.common.core.entity.SysOrdinaryUser;
 public interface SysOrdinaryUserService extends IService<SysOrdinaryUser> {
     
     /**
-     * 新增用户 (包含密码加密、身份证解析)
+     * 保存用户 (包含密码加密、身份证解析)
      */
     boolean saveUser(SysOrdinaryUser user);
     
@@ -33,4 +36,16 @@ public interface SysOrdinaryUserService extends IService<SysOrdinaryUser> {
      * @param newPassword 新密码 (明文)
      */
     void updatePassword(Long userId, String oldPassword, String newPassword);
+    
+    /**
+     * 批量导入用户 (Excel)
+     * @param inputStream 文件输入流
+     */
+    void importStudent(InputStream inputStream);
+    
+    /**
+     * 批量导出用户 (Excel) (包含 ID->Name 转换)
+     * @param queryParams 文件输出流
+     */
+    void exportData(HttpServletResponse response, SysOrdinaryUser queryParams);
 }

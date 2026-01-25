@@ -2,6 +2,7 @@ package com.mol.server.service;
 
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.mol.common.core.entity.SysAdminUser;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * 系统管理员业务接口
@@ -33,4 +34,11 @@ public interface SysAdminUserService extends IService<SysAdminUser> {
      * @param newPassword 新密码 (明文)
      */
     void resetPassword(Long userId, String newPassword);
+    
+    
+    /**
+     * 批量导出用户 (Excel) (包含 ID->Name 转换)
+     * @param queryParams 文件输出流
+     */
+    void exportData(HttpServletResponse response, SysAdminUser queryParams);
 }
