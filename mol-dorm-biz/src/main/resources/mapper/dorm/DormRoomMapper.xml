@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mol.dorm.biz.mapper.DormRoomMapper">
+
+    <!-- 通用查询映射结果，可根据实体类自动生成或按需添加 -->
+    <resultMap id="BaseResultMap" type="com.mol.dorm.biz.entity.DormRoom">
+        <id column="id" property="id" />
+        <!-- 其他字段映射 -->
+    </resultMap>
+
+</mapper>
