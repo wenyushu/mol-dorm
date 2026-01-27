@@ -13,7 +13,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 public class ResourcesConfig implements WebMvcConfigurer {
     
     // 读取 yml 中的路径配置
-    // 双保险：如果 yml 里没配，则默认用路径：D:/mol/uploadPath
+    // 双保险：如果 yml 里没配，则用默认路径：D:/mol/uploadPath
     @Value("${mol.profile:D:/mol/uploadPath}")
     private String localFilePath;
     

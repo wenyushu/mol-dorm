@@ -78,53 +78,53 @@ public class MolLauncherApplication {
                 %n""", port, localUrl, localUrl, localUrl);
     }
     
-    // 调试代码，锚点测试
-    @org.springframework.context.annotation.Bean
-    public org.springframework.boot.CommandLineRunner commandLineRunner(org.springframework.context.ApplicationContext ctx) {
-        return args -> {
-            System.out.println("================= Bean 检查开始 =================");
-            String[] beanNames = ctx.getBeanDefinitionNames();
-            boolean hasAuth = false;
-            for (String beanName : beanNames) {
-                if (beanName.equalsIgnoreCase("authController")) {
-                    System.out.println("✅ 找到了 AuthController !!!");
-                    hasAuth = true;
-                }
-            }
-            if (!hasAuth) {
-                System.err.println("❌❌❌ 完蛋了！容器里根本没有 AuthController！请检查 pom.xml 依赖和包扫描！❌❌❌");
-            }
-            System.out.println("================= Bean 检查结束 =================");
-        };
-    }
-    
-    // ⬇️⬇️⬇️ 【新增】打印所有 URL 接口映射 ⬇️⬇️⬇️
-    @org.springframework.context.annotation.Bean
-    public org.springframework.boot.CommandLineRunner printMappings(org.springframework.context.ApplicationContext ctx) {
-        return args -> {
-            System.out.println("================= 接口映射表 (HandlerMapping) =================");
-            try {
-                // 获取 Spring MVC 的核心映射组件
-                RequestMappingHandlerMapping mapping = ctx.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class);
-                Map<RequestMappingInfo, HandlerMethod> map = mapping.getHandlerMethods();
-                
-                if (map.isEmpty()) {
-                    System.err.println("⚠️ 警告：没有任何接口被注册！");
-                } else {
-                    // 遍历并打印
-                    map.forEach((info, method) -> {
-                        String controllerName = method.getBeanType().getSimpleName();
-                        // 只打印 auth 相关的，避免日志太多
-                        if (controllerName.contains("Auth")) {
-                            System.out.println("🔍 发现接口: " + info + "  --->  " + controllerName);
-                        }
-                    });
-                }
-            } catch (Exception e) {
-                System.err.println("❌ 获取映射表失败: " + e.getMessage());
-            }
-            System.out.println("================= 检查结束 =================");
-        };
-    }
+//    // 调试代码，锚点测试
+//    @org.springframework.context.annotation.Bean
+//    public org.springframework.boot.CommandLineRunner commandLineRunner(org.springframework.context.ApplicationContext ctx) {
+//        return args -> {
+//            System.out.println("================= Bean 检查开始 =================");
+//            String[] beanNames = ctx.getBeanDefinitionNames();
+//            boolean hasAuth = false;
+//            for (String beanName : beanNames) {
+//                if (beanName.equalsIgnoreCase("authController")) {
+//                    System.out.println("✅ 找到了 AuthController !!!");
+//                    hasAuth = true;
+//                }
+//            }
+//            if (!hasAuth) {
+//                System.err.println("❌❌❌ 完蛋了！容器里根本没有 AuthController！请检查 pom.xml 依赖和包扫描！❌❌❌");
+//            }
+//            System.out.println("================= Bean 检查结束 =================");
+//        };
+//    }
+//
+//    // ⬇️⬇️⬇️ 【新增】打印所有 URL 接口映射 ⬇️⬇️⬇️
+//    @org.springframework.context.annotation.Bean
+//    public org.springframework.boot.CommandLineRunner printMappings(org.springframework.context.ApplicationContext ctx) {
+//        return args -> {
+//            System.out.println("================= 接口映射表 (HandlerMapping) =================");
+//            try {
+//                // 获取 Spring MVC 的核心映射组件
+//                RequestMappingHandlerMapping mapping = ctx.getBean("requestMappingHandlerMapping", RequestMappingHandlerMapping.class);
+//                Map<RequestMappingInfo, HandlerMethod> map = mapping.getHandlerMethods();
+//
+//                if (map.isEmpty()) {
+//                    System.err.println("⚠️ 警告：没有任何接口被注册！");
+//                } else {
+//                    // 遍历并打印
+//                    map.forEach((info, method) -> {
+//                        String controllerName = method.getBeanType().getSimpleName();
+//                        // 只打印 auth 相关的，避免日志太多
+//                        if (controllerName.contains("Auth")) {
+//                            System.out.println("🔍 发现接口: " + info + "  --->  " + controllerName);
+//                        }
+//                    });
+//                }
+//            } catch (Exception e) {
+//                System.err.println("❌ 获取映射表失败: " + e.getMessage());
+//            }
+//            System.out.println("================= 检查结束 =================");
+//        };
+//    }
     
 }
