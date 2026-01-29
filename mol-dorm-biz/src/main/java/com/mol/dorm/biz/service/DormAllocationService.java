@@ -605,12 +605,15 @@ public class DormAllocationService {
         }
     }
     
-    // 辅助逻辑
+    // 辅助逻辑，少数民族
+    // 作用：用于控制同一房间内的民族构成，促进融合。
     private boolean isMinority(SysOrdinaryUser user) {
-        // 模拟判断：实际应从 user.getEthnicity() 判断
-        // 假设 entity 中有 ethnicity 字段，不是 "汉族" 则为少数民族
-        // if ("汉族".equals(user.getEthnicity())) return false;
-        return false;
+        // 1. 防御性判空
+        if (user == null || StrUtil.isBlank(user.getEthnicity())) {
+            return false;
+        }
+        // 2. 只要不是"汉族"，都视为少数民族 (根据实际业务可调整为 Set 白名单)
+        return !"汉族".equals(user.getEthnicity());
     }
     
     // 辅助判断下路双人组 (4:ADC, 5:Support)

@@ -7,25 +7,24 @@ import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Update;
 
 /**
- * 宿舍房间 Mapper
- * 核心功能：提供基于 SQL 的原子更新能力，防止并发超卖。
+ * 宿舍房间 Mapper (CAS 防超卖加强版)
  */
 @Mapper
 public interface DormRoomMapper extends BaseMapper<DormRoom> {
     
     /**
-     * 原子增加当前人数 (支持批量)
-     * 场景：分配宿舍时，一次性增加 N 人
-     * SQL: UPDATE dorm_room SET current_num = current_num + #{count} WHERE id = #{id}
+     * 🟢 [修复] 原子增加当前人数 (带容量熔断保护)
+     * 原理：利用 MySQL 行锁，在更新时同时校验 (current_num + count <= capacity)
+     * @return 影响行数。如果返回 0，说明容量不足，更新失败。
      */
-    @Update("UPDATE dorm_room SET current_num = current_num + #{count} WHERE id = #{id}")
+    @Update("UPDATE dorm_room SET current_num = current_num + #{count} " +
+            "WHERE id = #{id} AND (current_num + #{count}) <= capacity")
     int increaseOccupancy(@Param("id") Long id, @Param("count") Integer count);
     
     /**
-     * 原子减少当前人数 (支持批量，且防止减成负数)
-     * 场景：退宿/调宿时，一次性减少 N 人
-     * SQL: UPDATE dorm_room SET current_num = current_num - #{count} WHERE id = #{id} AND current_num >= #{count}
+     * 原子减少当前人数 (防止负数)
      */
-    @Update("UPDATE dorm_room SET current_num = current_num - #{count} WHERE id = #{id} AND current_num >= #{count}")
+    @Update("UPDATE dorm_room SET current_num = current_num - #{count} " +
+            "WHERE id = #{id} AND current_num >= #{count}")
     int decreaseOccupancy(@Param("id") Long id, @Param("count") Integer count);
 }

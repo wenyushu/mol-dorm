@@ -8,6 +8,9 @@ package com.mol.common.core.constant;
  */
 public class RoleConstants {
     
+    // 🚫 私有构造，防止 new RoleConstants()
+    private RoleConstants() {}
+    
     // ================== 1. 一级权限 (系统核心) ==================
     /** 超级管理员 */
     public static final String SUPER_ADMIN = "super_admin";
@@ -29,6 +32,6 @@ public class RoleConstants {
     // ================== 4. 四级权限 (普通用户) ==================
     /** 学生 */
     public static final String STUDENT = "student";
-    /** 普通工勤人员 (食堂/保安) */
+    /** 普通工勤人员 (食堂/保安/保洁等) */
     public static final String STAFF = "staff";
 }

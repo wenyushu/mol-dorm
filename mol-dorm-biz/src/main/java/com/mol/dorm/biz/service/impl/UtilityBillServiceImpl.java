@@ -1,56 +1,91 @@
 package com.mol.dorm.biz.service.impl;
 
 import cn.hutool.core.util.NumberUtil;
+import cn.hutool.core.util.ObjectUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-
 import com.mol.common.core.exception.ServiceException;
+import com.mol.dorm.biz.entity.DormRoom;
 import com.mol.dorm.biz.entity.UtilityBill;
 import com.mol.dorm.biz.enums.BillStatusEnum;
 import com.mol.dorm.biz.mapper.UtilityBillMapper;
+import com.mol.dorm.biz.service.DormRoomService;
 import com.mol.dorm.biz.service.UtilityBillService;
+import com.mol.server.entity.SysCampus;
+import com.mol.server.service.SysCampusService;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
+/**
+ * 水电费账单服务实现 (动态计价版)
+ *
+ * @author mol
+ */
 @Service
+@RequiredArgsConstructor // 🟢 注入 Service 依赖
 public class UtilityBillServiceImpl extends ServiceImpl<UtilityBillMapper, UtilityBill> implements UtilityBillService {
     
-    // 模拟单价配置 (实际项目中应从 sys_config 表读取)
-    private static final BigDecimal PRICE_WATER_COLD = new BigDecimal("3.5"); // 冷水 3.5元/吨
-    private static final BigDecimal PRICE_WATER_HOT = new BigDecimal("18.0"); // 热水 18元/吨 (通常比较贵)
-    private static final BigDecimal PRICE_ELEC = new BigDecimal("0.58");      // 电费 0.58元/度
+    private final DormRoomService roomService;
+    private final SysCampusService campusService;
+    
+    // 兜底单价 (防止校区未配置时计算报错，也可选择直接报错)
+    private static final BigDecimal DEFAULT_PRICE_COLD = new BigDecimal("3.5");
+    private static final BigDecimal DEFAULT_PRICE_HOT = new BigDecimal("18.0");
+    private static final BigDecimal DEFAULT_PRICE_ELEC = new BigDecimal("0.58");
     
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void calculateAndSave(UtilityBill bill) {
-        // 1. 计算各项费用
-        // NumberUtil.mul 是 Hutool 工具类，防止精度丢失，也可以直接用 BigDecimal.multiply
-        BigDecimal costCold = NumberUtil.mul(bill.getWaterCold(), PRICE_WATER_COLD);
-        BigDecimal costHot = NumberUtil.mul(bill.getWaterHot(), PRICE_WATER_HOT);
-        BigDecimal costElec = NumberUtil.mul(bill.getElectricUsage(), PRICE_ELEC);
+        // 1. 获取计费上下文 (房间 -> 校区 -> 单价)
+        if (bill.getRoomId() == null) {
+            throw new ServiceException("生成账单失败：未关联房间 ID");
+        }
+        
+        DormRoom room = roomService.getById(bill.getRoomId());
+        if (room == null) {
+            throw new ServiceException("生成账单失败：房间不存在");
+        }
+        
+        // 获取校区配置
+        SysCampus campus = campusService.getById(room.getCampusId());
+        if (campus == null) {
+            throw new ServiceException("生成账单失败：房间所属校区数据缺失");
+        }
+        
+        // 2. 确定单价 (优先用校区配置，无配置则用兜底)
+        BigDecimal priceCold = ObjectUtil.defaultIfNull(campus.getPriceWaterCold(), DEFAULT_PRICE_COLD);
+        BigDecimal priceHot = ObjectUtil.defaultIfNull(campus.getPriceWaterHot(), DEFAULT_PRICE_HOT);
+        BigDecimal priceElec = ObjectUtil.defaultIfNull(campus.getPriceElectric(), DEFAULT_PRICE_ELEC);
+        
+        // 3. 计算各项费用 (使用 Hutool 防止精度丢失)
+        BigDecimal costCold = NumberUtil.mul(bill.getWaterCold(), priceCold);
+        BigDecimal costHot = NumberUtil.mul(bill.getWaterHot(), priceHot);
+        BigDecimal costElec = NumberUtil.mul(bill.getElectricUsage(), priceElec);
         
         bill.setCostWaterCold(costCold);
         bill.setCostWaterHot(costHot);
         bill.setCostElectric(costElec);
         
-        // 2. 计算总价
+        // 4. 计算总价并保留两位小数 (ROUND_HALF_UP: 四舍五入)
         BigDecimal total = costCold.add(costHot).add(costElec);
-        bill.setTotalCost(total);
+        bill.setTotalCost(NumberUtil.round(total, 2));
         
-        // 3. 初始状态
+        // 5. 设置初始状态
         if (bill.getPaymentStatus() == null) {
             bill.setPaymentStatus(BillStatusEnum.UNPAID.getCode());
         }
         
+        // 保存或更新
         this.saveOrUpdate(bill);
     }
     
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void payBill(Long billId, boolean success) {
-        // 1. 查询账单 (利用乐观锁 version)
+        // 1. 查询账单
         UtilityBill bill = this.getById(billId);
         if (bill == null) {
             throw new ServiceException("账单不存在");
@@ -64,20 +99,18 @@ public class UtilityBillServiceImpl extends ServiceImpl<UtilityBillMapper, Utili
             throw new ServiceException("账单已作废");
         }
         
-        // 3. 模拟支付逻辑
+        // 3. 支付处理
         if (success) {
-            // 支付成功
             bill.setPaymentStatus(BillStatusEnum.PAID.getCode());
             bill.setPayTime(LocalDateTime.now());
+            // TODO: 这里未来可以扩展：扣除学生账户余额、发送通知等
+            
         } else {
-            // 支付失败 (演示用)
             bill.setPaymentStatus(BillStatusEnum.FAILED.getCode());
-            // 失败时不更新支付时间
         }
         
-        // 4. 更新数据库 (乐观锁生效)
-        boolean updateResult = this.updateById(bill);
-        if (!updateResult) {
+        // 4. 更新数据库 (乐观锁 version 控制并发)
+        if (!this.updateById(bill)) {
             throw new ServiceException("支付并发冲突，请刷新后重试");
         }
     }

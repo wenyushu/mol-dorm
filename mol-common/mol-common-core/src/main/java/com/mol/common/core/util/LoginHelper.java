@@ -5,6 +5,7 @@ import cn.dev33.satoken.session.SaSession;
 import cn.dev33.satoken.stp.StpUtil;
 import cn.hutool.core.convert.Convert;
 import cn.hutool.core.util.StrUtil;
+import com.mol.common.core.constant.RoleConstants; // 🟢 引入常量
 import lombok.AccessLevel;
 import lombok.NoArgsConstructor;
 
@@ -18,6 +19,21 @@ import lombok.NoArgsConstructor;
  */
 @NoArgsConstructor(access = AccessLevel.PRIVATE)
 public class LoginHelper {
+    
+    /**
+     * ✅ [新增] 判断当前用户是否为超级管理员
+     * 作用：用于业务代码中的越权判断 (如：维修工单完工、强制退宿等)
+     */
+    public static boolean isAdmin() {
+        try {
+            // 复用 getRoleKey() 方法
+            String roleKey = getRoleKey();
+            // 比对 "super_admin"
+            return RoleConstants.SUPER_ADMIN.equals(roleKey);
+        } catch (Exception e) {
+            return false;
+        }
+    }
     
     /**
      * 获取当前登录用户 ID (真实 ID，非 Sa-Token 的 LoginId)
@@ -46,7 +62,8 @@ public class LoginHelper {
                 }
             }
             
-            // 2. 兜底：如果 Session 没取到 (极端情况)，解析 Token 字符串 (格式 "Type:ID")
+            // 2. 兜底：如果 Session 没取到 (极端情况)，解析 Token 字符串
+            // 假设 LoginId 格式为 "Type:ID" (如 "0:10001")
             String loginId = StpUtil.getLoginIdAsString();
             return parseIdFromToken(loginId);
             
@@ -58,7 +75,7 @@ public class LoginHelper {
     
     /**
      * 获取当前用户类型
-     * @return "admin"(0) 或 "student"(1) 对应的字符串，或者原始数字字符串
+     * @return "admin" 或 "student" 对应的字符串
      */
     public static String getUserType() {
         try {
@@ -90,7 +107,6 @@ public class LoginHelper {
     /**
      * 判断是否已登录
      */
-    // 添加 @SuppressWarnings 注解，告诉 IDE “我知道我在做什么，别吵”。
     @SuppressWarnings("BooleanMethodIsAlwaysInverted")
     public static boolean isLogin() {
         return StpUtil.isLogin();
@@ -101,13 +117,19 @@ public class LoginHelper {
      * 辅助：安全解析 Token 中的 ID 部分
      */
     private static Long parseIdFromToken(String loginId) {
-        if (StrUtil.isBlank(loginId) || !loginId.contains(":")) {
+        if (StrUtil.isBlank(loginId)) {
             return null;
         }
-        String[] parts = loginId.split(":");
-        // 确保 ID 部分是纯数字
-        if (parts.length == 2 && StrUtil.isNumeric(parts[1])) {
-            return Long.parseLong(parts[1]);
+        // 如果包含冒号，取冒号后面部分
+        if (loginId.contains(":")) {
+            String[] parts = loginId.split(":");
+            if (parts.length == 2 && StrUtil.isNumeric(parts[1])) {
+                return Long.parseLong(parts[1]);
+            }
+        }
+        // 如果纯数字 (兼容部分旧逻辑)，直接返回
+        else if (StrUtil.isNumeric(loginId)) {
+            return Long.parseLong(loginId);
         }
         return null;
     }
@@ -125,7 +147,7 @@ public class LoginHelper {
                 ip = SaHolder.getRequest().getHeader("X-Real-IP");
             }
             if (StrUtil.isBlank(ip) || "unknown".equalsIgnoreCase(ip)) {
-                // Sa-Token 提供了封装好的方法 getHost() ，用于获取直连 IP (String 类型)
+                // Sa-Token 提供了封装好的方法 getHost()
                 ip = SaHolder.getRequest().getHost();
             }
             // 处理多级代理的情况，取第一个非 unknown 的 IP
