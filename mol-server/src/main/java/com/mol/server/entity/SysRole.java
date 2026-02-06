@@ -8,6 +8,7 @@ import com.mol.common.core.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 import java.io.Serial;
 
@@ -19,6 +20,7 @@ import java.io.Serial;
  * </p>
  */
 @Data
+@Accessors(chain = true) // ✨ 父类及子类支持链式返回
 @EqualsAndHashCode(callSuper = true)
 @TableName("sys_role")
 @Schema(description = "角色信息")

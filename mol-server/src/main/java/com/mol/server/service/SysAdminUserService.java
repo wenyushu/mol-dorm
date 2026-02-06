@@ -37,7 +37,7 @@ public interface SysAdminUserService extends IService<SysAdminUser> {
     
     
     /**
-     * 批量导出用户 (Excel) (包含 ID->Name 转换)
+     * 批量导出管理员用户 (Excel) (包含 ID->Name 转换)
      * @param queryParams 文件输出流
      */
     void exportData(HttpServletResponse response, SysAdminUser queryParams);

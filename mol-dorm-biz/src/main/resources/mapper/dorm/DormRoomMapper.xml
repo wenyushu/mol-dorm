@@ -2,10 +2,82 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.mol.dorm.biz.mapper.DormRoomMapper">
 
-    <!-- 通用查询映射结果，可根据实体类自动生成或按需添加 -->
     <resultMap id="BaseResultMap" type="com.mol.dorm.biz.entity.DormRoom">
         <id column="id" property="id" />
-        <!-- 其他字段映射 -->
+        <result column="campus_id" property="campusId" />
+        <result column="building_id" property="buildingId" />
+        <result column="floor_id" property="floorId" />
+        <result column="floor_num" property="floorNum" />
+        <result column="room_no" property="roomNo" />
+        <result column="apartment_type" property="apartmentType" />
+        <result column="capacity" property="capacity" />
+        <result column="current_num" property="currentNum" />
+        <result column="accommodation_fee" property="accommodationFee" />
+        <result column="gender" property="gender" />
+        <result column="usage_type" property="usageType" />
+        <result column="status" property="status" />
+        <result column="resource_status" property="resStatus" />
+        <result column="safety_level" property="safetyLevel" /> <result column="version" property="version" />
+        <result column="create_time" property="createTime" />
+        <result column="update_time" property="updateTime" />
+        <result column="del_flag" property="delFlag" />
     </resultMap>
+
+    <select id="findAvailableRooms" resultMap="BaseResultMap">
+        SELECT r.* FROM dorm_room r
+                            INNER JOIN dorm_building b ON r.building_id = b.id
+                            INNER JOIN dorm_floor f ON r.floor_id = f.id
+        WHERE r.building_id = #{buildingId}
+          AND r.gender = #{gender}
+          AND r.usage_type = #{usageType}
+          AND r.status = 20              AND r.safety_level = 1          AND b.status = 20              AND f.status = 20              AND r.resource_status IN (21, 23, 24, 25) AND r.del_flag = '0'
+        ORDER BY r.resource_status DESC, r.room_no ASC </select>
+
+    <select id="selectByStudentId" resultMap="BaseResultMap">
+        SELECT r.* FROM dorm_room r
+                            INNER JOIN dorm_bed b ON r.id = b.room_id
+        WHERE b.occupant_id = #{studentId}
+          AND r.del_flag = '0'
+          AND b.del_flag = '0'
+            LIMIT 1
+    </select>
+
+    <select id="selectRoomStatusStats" resultType="java.util.Map">
+        SELECT
+        resource_status AS resStatus,
+        COUNT(id) AS count
+        FROM dorm_room
+        WHERE del_flag = '0'
+        <if test="buildingId != null">
+            AND building_id = #{buildingId}
+        </if>
+        <if test="campusId != null">
+            AND campus_id = #{campusId}
+        </if>
+        GROUP BY resource_status
+    </select>
+
+    <select id="selectRoomDetail" resultType="java.util.Map">
+        SELECT
+            r.*,
+            b.building_name AS buildingName,
+            b.building_no AS buildingNo,
+            f.floor_num AS floorNum,
+            (r.capacity - r.current_num) AS emptyBeds FROM dorm_room r
+                                                               LEFT JOIN dorm_building b ON r.building_id = b.id
+                                                               LEFT JOIN dorm_floor f ON r.floor_id = f.id
+        WHERE r.id = #{roomId}
+          AND r.del_flag = '0'
+    </select>
+
+    <select id="countStatusByRoom" resultType="java.util.Map">
+        SELECT
+            status AS status,
+            COUNT(id) AS total_count
+        FROM dorm_fixed_asset
+        WHERE room_id = #{roomId}
+          AND del_flag = '0'
+        GROUP BY status
+    </select>
 
 </mapper>

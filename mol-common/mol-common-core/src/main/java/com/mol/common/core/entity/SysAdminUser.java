@@ -2,13 +2,17 @@ package com.mol.common.core.entity;
 
 import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.annotation.*;
+import com.mol.common.core.annotation.SensitiveMask;
 import com.mol.common.core.handler.EncryptTypeHandler;
+import com.mol.common.core.mask.MaskStrategy;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 import java.io.Serial;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -21,6 +25,7 @@ import java.time.LocalDateTime;
  * @author mol
  */
 @Data
+@Accessors(chain = true) // ✨ 父类及子类支持链式返回
 @EqualsAndHashCode(callSuper = true)
 @TableName(value = "sys_admin_user", autoResultMap = true)
 @Schema(description = "系统管理员对象")
@@ -62,13 +67,14 @@ public class SysAdminUser extends BaseEntity {
     }
     
     @Schema(description = "手机号")
+    @SensitiveMask(MaskStrategy.PHONE)   // ✨ 新增脱敏注解
     @TableField(typeHandler = EncryptTypeHandler.class)
     private String phone;
     
     @Schema(description = "电子邮箱")
     private String email;
     
-    // 🟢 ================== 核心归属字段 ==================
+    // ================== 核心归属字段 ==================
     
     @Schema(description = "所属校区 ID")
     private Long campusId;
@@ -79,10 +85,21 @@ public class SysAdminUser extends BaseEntity {
     @Schema(description = "所属学院 ID")
     private Long collegeId;
     
-    // 🟢 ================== 档案补充字段 ==================
+    /**
+     * 🏢 负责楼栋 ID
+     * 🛡️ [网格化管理核心]：
+     * 1. 权限锚点：宿管、楼栋辅导员通过此 ID 实现数据权限自动隔离。
+     * 2. 业务锁定：报修指派、房间体检等业务流自动根据此字段过滤管辖范围。
+     */
+    @Schema(description = "负责楼栋 ID (宿管/辅导员管辖权属性)")
+    @TableField(value = "building_id") // 显式指定数据库字段，防止映射偏差
+    private Long buildingId;
+    
+    // ================== 档案补充字段 ==================
     
     @Schema(description = "身份证号")
     @TableField(typeHandler = EncryptTypeHandler.class)
+    @SensitiveMask(MaskStrategy.ID_CARD) // ✨ 新增脱敏注解
     private String idCard;
     
     @Schema(description = "民族")
@@ -91,21 +108,40 @@ public class SysAdminUser extends BaseEntity {
     @Schema(description = "籍贯")
     private String hometown;
     
-    @Schema(description = "居住地址")
+    /**
+     * 家庭居住地址 (身份证上的原始地址)
+     * 🛡️ 防刁民：用于核实人员真实背景，通常不随入职变动。
+     */
+    @Schema(description = "家庭居住地址")
     @TableField(typeHandler = EncryptTypeHandler.class)
-    private String currentAddress;
+    @SensitiveMask(MaskStrategy.HOME_ADDRESS) // ✨ 新增脱敏
+    private String homeAddress;
+    
+    /**
+     * 校外居住地址 (实际目前的居住地)
+     * 🛡️ 防刁民：仅管理员可见，防止非相关人员顺藤摸瓜。
+     */
+    @Schema(description = "校外居住地址")
+    @TableField(typeHandler = EncryptTypeHandler.class)
+    @SensitiveMask(MaskStrategy.OUTSIDE_ADDRESS) // ✨ 新增脱敏
+    private String outsideAddress;
+    
     
     @Schema(description = "紧急联系人")
     private String emergencyContact;
     
     @Schema(description = "紧急电话")
     @TableField(typeHandler = EncryptTypeHandler.class)
+    @SensitiveMask(MaskStrategy.PHONE) // ✨ 新增脱敏
     private String emergencyPhone;
     
     @Schema(description = "关系")
     private String emergencyRelation;
     
     // =========================================================
+    
+    @Schema(description = "入职日期")
+    private LocalDate entryDate;  // 对应数据库 entry_date
     
     @Schema(description = "居住类型 (0:住校 1:校外)")
     private Integer residenceType;
@@ -121,6 +157,11 @@ public class SysAdminUser extends BaseEntity {
     private String remark;
     
     // =========== ✨ 新增：防刁民/审计核心字段 ===========
+    
+    // ✨✨✨【关键修改点】添加下面这个字段 ✨✨✨
+    @TableField(exist = false) // 👈 告诉 MyBatis-Plus：数据库表里没这个列，别报错
+    @Schema(description = "角色ID (仅用于接收前端参数，保存时存入关联表)")
+    private Long roleId;
     
     /**
      * 在岗/在校状态 (1:在岗/在校 0:休假/离校)

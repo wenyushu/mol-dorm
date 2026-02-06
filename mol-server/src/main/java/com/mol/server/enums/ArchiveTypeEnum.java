@@ -20,7 +20,7 @@ public enum ArchiveTypeEnum {
     
     // --- 🤖 系统自动处理 ---
     INACTIVE_FREEZE(30, "长期不活跃冻结"),   // 僵尸号清理
-    SUSPENSION_EXPIRED(52, "休学期满自动退学"), // 休学超过2年未复学 (System Task 触发)
+    SUSPENSION_EXPIRED(52, "休学期满自动退学"), // 休学超过 2 年未复学 (System Task 触发)
     
     // --- ⚠️ 人工干预 (不可逆) ---
     DROP_OUT_VOLUNTARY(40, "主动退学"),      // 学生申请退学

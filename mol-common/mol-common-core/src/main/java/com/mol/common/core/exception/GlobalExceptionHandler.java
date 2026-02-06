@@ -7,10 +7,13 @@ import cn.dev33.satoken.exception.NotSafeException;
 import com.mol.common.core.util.R;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.support.DefaultMessageSourceResolvable;
+import org.springframework.http.HttpStatus;
 import org.springframework.validation.BindException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.stream.Collectors;
 
@@ -44,7 +47,7 @@ public class GlobalExceptionHandler {
         String message = e.getBindingResult().getFieldErrors().stream()
                 .map(DefaultMessageSourceResolvable::getDefaultMessage)
                 .collect(Collectors.joining(", "));
-        log.warn("JSON参数校验失败: {}", message);
+        log.warn("JSON 参数校验失败: {}", message);
         return R.fail(message);
     }
     
@@ -97,5 +100,17 @@ public class GlobalExceptionHandler {
     public R<Void> handleGlobalException(Exception e) {
         log.error("系统严重错误 ex={}", e.getMessage(), e);
         return R.fail(500, "系统繁忙，请稍后重试");
+    }
+    
+    /**
+     * 拦截静态资源不存在异常 (Spring Boot 3 特性)
+     * 场景：浏览器自动请求 favicon.ico 或用户输错静态资源路径
+     * 策略：直接返回 404，不打印堆栈日志，保持控制台清爽
+     */
+    @ExceptionHandler(NoResourceFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public R<Void> handleNoResourceFoundException(NoResourceFoundException e) {
+        log.warn("静态资源不存在: {}", e.getResourcePath()); // 可选：如果你想看警告就留着，不想看就注释掉
+        return R.fail(404, "资源不存在: " + e.getResourcePath());
     }
 }

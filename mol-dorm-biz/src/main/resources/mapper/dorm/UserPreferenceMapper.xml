@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mol.dorm.biz.mapper.UserPreferenceMapper">
+
+    <select id="selectFullProfileForAllocation" resultType="com.mol.dorm.biz.entity.UserPreference">
+        SELECT
+        p.*,
+        u.real_name AS realName,
+        u.gender AS gender,
+        u.ethnicity AS ethnicity,
+        u.college_id AS collegeId,
+        u.major_id AS majorId,
+        u.class_id AS classId,
+        u.job_title_level AS jobTitleLevel
+        FROM biz_user_preference p
+        INNER JOIN sys_ordinary_user u ON p.user_id = u.id
+        WHERE u.campus_id = #{campusId}
+        AND u.status = '0'
+        AND u.del_flag = '0'
+        AND p.profile_status = 1   -- 必须是已完成画像的
+        <if test="gender != null and gender != ''">
+            AND u.gender = #{gender}
+        </if>
+        AND NOT EXISTS (
+        SELECT 1 FROM dorm_bed b
+        WHERE b.occupant_id = u.id
+        AND b.del_flag = '0'
+        )
+        ORDER BY
+        u.user_category DESC,    -- 教工优先
+        u.job_title_level DESC,  -- 职级高优先
+        u.college_id ASC,        -- 地缘性聚合
+        u.major_id ASC,
+        u.class_id ASC
+    </select>
+
+    <select id="selectUnallocatedByRole" resultType="com.mol.dorm.biz.entity.UserPreference">
+        SELECT p.*, u.real_name AS realName, u.job_title_level AS jobTitleLevel
+        FROM biz_user_preference p
+                 INNER JOIN sys_ordinary_user u ON p.user_id = u.id
+        WHERE u.campus_id = #{campusId}
+          AND u.gender = #{gender}
+          AND u.user_category = #{userCategory}
+          AND u.del_flag = '0'
+          AND NOT EXISTS (
+            SELECT 1 FROM dorm_bed b WHERE b.occupant_id = u.id
+        )
+    </select>
+
+    <select id="selectStaffWithSpecialNeeds" resultType="com.mol.dorm.biz.entity.UserPreference">
+        SELECT p.*, u.real_name AS realName
+        FROM biz_user_preference p
+                 INNER JOIN sys_ordinary_user u ON p.user_id = u.id
+        WHERE u.campus_id = #{campusId}
+          AND u.user_category = 1
+          AND (p.has_disability = 1 OR p.has_insulin = 1 OR p.has_infectious = 1)
+          AND u.del_flag = '0'
+    </select>
+
+</mapper>

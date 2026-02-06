@@ -7,11 +7,13 @@ import cn.hutool.crypto.digest.BCrypt;
 import cn.idev.excel.FastExcel;
 import cn.idev.excel.read.listener.PageReadListener;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import com.mol.common.core.constant.RoleConstants;
 import com.mol.common.core.entity.*;
 import com.mol.common.core.entity.SysUserRole;
 import com.mol.common.core.exception.ServiceException;
 import com.mol.server.component.UsernameGenerator;
 import com.mol.server.entity.*;
+import com.mol.server.mapper.SysAdminUserMapper;
 import com.mol.server.mapper.SysOrdinaryUserMapper;
 import com.mol.server.mapper.SysUserRoleMapper;
 import com.mol.server.service.*;
@@ -71,6 +73,10 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
     // 规则：仅允许 10 到 30 位的数字和大写字母组合 (拒绝特殊符号和中文)
     private static final Pattern ACCOUNT_PATTERN = Pattern.compile("^[0-9A-Z]{10,30}$");
     
+    // 新增：注入管理员 Mapper，用于跨表查重
+    private final SysAdminUserMapper adminUserMapper;
+    
+    
     // =================================================================================
     // 1. 新增用户 (单条录入 - 防呆版)
     // =================================================================================
@@ -91,7 +97,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
         if (StrUtil.isBlank(user.getEthnicity())) user.setEthnicity("汉族");
         if (StrUtil.isBlank(user.getHometown())) user.setHometown("未知");
         
-        // 年份校验 (2000年 ~ 明年)
+        // 🛡️ 年份校验 (2000年 ~ 明年)
         Integer year = user.getEntryYear();
         if (year == null) year = user.getEnrollmentYear();
         if (year != null) {
@@ -101,7 +107,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
             }
         }
         
-        // 身份证算法校验
+        // 🛡️ 身份证算法校验
         if (StrUtil.isNotBlank(user.getIdCard()) && !IdcardUtil.isValidCard(user.getIdCard())) {
             throw new ServiceException("身份证号码无效，请核对后重新输入");
         }
@@ -109,7 +115,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
         // --- B. 智能填充 ---
         parseIdCardInfo(user);
         
-        // --- C. 账号生成与审查 ---
+        // --- C. 账号生成与审查（🛡️ 防刁民） ---
         if (StrUtil.isBlank(user.getUsername())) {
             // C1. 自动生成
             String generatedAccount = generateUniqueAccount(user);
@@ -118,21 +124,30 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
                 log.error("账号生成异常: {}", generatedAccount);
                 throw new ServiceException("系统生成账号格式异常，请联系管理员");
             }
+            // [新增] 即使是生成的账号，也稍微查一下管理员表 (万一有管理员故意取了个像学号的名字)
+            if (checkAdminUsernameExists(generatedAccount)) {
+                throw new ServiceException("生成失败：账号[" + generatedAccount + "]与现有管理员冲突");
+            }
             user.setUsername(generatedAccount);
         } else {
             // C2. 手动录入
             if (!ACCOUNT_PATTERN.matcher(user.getUsername()).matches()) {
-                throw new ServiceException("账号格式错误！仅允许10-30位数字和大写字母组合");
+                throw new ServiceException("账号格式错误！仅允许 10-30 位数字和大写字母组合");
             }
+            // 1. 查自己表
             if (checkUsernameExists(user.getUsername())) {
                 throw new ServiceException("账号已存在: " + user.getUsername());
             }
+            // 2. 查管理员表 (防刁民核心逻辑)
+            if (checkAdminUsernameExists(user.getUsername())) {
+                throw new ServiceException("新增失败：该账号[" + user.getUsername() + "]已被【管理员】占用，请更换！");
+            }
         }
         
-        // --- D. 密码处理 ---
+        // --- D. 🛡️ 密码处理 ---
         String rawPwd = user.getPassword();
         if (StrUtil.isBlank(rawPwd)) {
-            // 默认密码：身份证后6位 或 123456
+            // 默认密码：身份证后 6 位，或 123456
             rawPwd = "123456";
             if (StrUtil.isNotBlank(user.getIdCard()) && user.getIdCard().length() >= 6) {
                 rawPwd = StrUtil.subSuf(user.getIdCard(), user.getIdCard().length() - 6);
@@ -161,7 +176,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
     public void importStudent(InputStream inputStream) {
         log.info("导入开始：正在加载基础数据字典...");
         
-        // 🟢 1. 字典预加载 (Name -> ID)
+        // 🛡️ 1. 字典预加载 (Name -> ID)
         // 避免在循环中查库，极大提升性能
         Map<String, Long> campusMap = campusService.list().stream()
                 .collect(Collectors.toMap(SysCampus::getCampusName, SysCampus::getId, (v1, v2) -> v1));
@@ -178,23 +193,36 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
         Map<String, Long> deptMap = deptService.list().stream()
                 .collect(Collectors.toMap(SysDept::getName, SysDept::getId, (v1, v2) -> v1));
         
-        // 预查已有学号 (防止唯一键冲突)
+        // 🛡️ 预查已有学号，(学生表)，防止唯一键冲突
         Set<String> existUsernames = this.list().stream()
                 .map(SysOrdinaryUser::getUsername)
                 .collect(Collectors.toSet());
         
+        // 🛡️  [新增] 预查管理员账号 (一次性查出，避免在循环里查库)
+        Set<String> existAdminUsernames = adminUserMapper.selectList(null).stream()
+                .map(SysAdminUser::getUsername) // 假设 Admin 实体也有 getUsername
+                .collect(Collectors.toSet());
+        
         log.info("字典加载完成，开始解析...");
         
-        // 🟢 2. 流式读取与转换
+        //  2. 流式读取与转换
         FastExcel.read(inputStream, StudentImportVO.class, new PageReadListener<StudentImportVO>(dataList -> {
             List<SysOrdinaryUser> saveList = new ArrayList<>();
             List<SysUserRole> roleList = new ArrayList<>();
             
             for (StudentImportVO vo : dataList) {
-                // 跳过规则
+                // 1. 跳过空行
                 if (StrUtil.isBlank(vo.getUsername())) continue;
+                
+                // 2. 查重 (数据库已有的 + Excel前面行已经出现过的)
                 if (existUsernames.contains(vo.getUsername())) {
-                    log.warn("导入跳过：账号[{}]已存在", vo.getUsername());
+                    log.warn("导入跳过：账号[{}]已存在 (数据库或Excel重复)", vo.getUsername());
+                    continue;
+                }
+                
+                // 3. 查管理员表冲突
+                if (existAdminUsernames.contains(vo.getUsername())) {
+                    log.warn("导入跳过：账号[{}]与管理员冲突", vo.getUsername());
                     continue;
                 }
                 
@@ -246,9 +274,16 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
                     }
                     user.setContractYear(3);
                 }
-                
+
+                // 4. 解析身份证信息
                 parseIdCardInfo(user);
+                
+                // 5. 加入待保存列表
                 saveList.add(user);
+                
+                // 注意：在循环末尾把新加入的也放进 Set，防止 Excel 内部自己重复
+                // 将当前处理完的学号加入 Set。
+                // 作用：如果 Excel 下一行又是这个学号，上面的第 2 步判断就会拦截住它。
                 existUsernames.add(user.getUsername());
             }
             
@@ -259,7 +294,8 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
                 for (SysOrdinaryUser u : saveList) {
                     SysUserRole ur = new SysUserRole();
                     ur.setUserId(u.getId());
-                    ur.setRoleId(u.getUserCategory() == 0 ? 5L : 6L);
+                    // 使用 RoleConstants 常量 (8L 和 6L)
+                    ur.setRoleId(u.getUserCategory() == 0 ? RoleConstants.STUDENT_ID : RoleConstants.COLLEGE_TEACHER_ID);
                     roleList.add(ur);
                 }
                 // 批量插角色
@@ -277,7 +313,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
     @Override
     public void exportData(HttpServletResponse response, SysOrdinaryUser queryParams) {
         try {
-            // 🟢 1. 查询源数据
+            //  1. 查询源数据
             // 根据 queryParams 进行筛选，复用 MyBatisPlus 逻辑
             List<SysOrdinaryUser> userList = this.lambdaQuery()
                     .like(StrUtil.isNotBlank(queryParams.getRealName()), SysOrdinaryUser::getRealName, queryParams.getRealName())
@@ -293,7 +329,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
             
             log.info("导出准备：加载反向字典...");
             
-            // 🟢 2. 字典预加载 (ID -> Name)
+            //  2. 字典预加载 (ID -> Name)
             Map<Long, String> campusMap = campusService.list().stream()
                     .collect(Collectors.toMap(SysCampus::getId, SysCampus::getCampusName));
             
@@ -309,7 +345,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
             Map<Long, String> deptMap = deptService.list().stream()
                     .collect(Collectors.toMap(SysDept::getId, SysDept::getName));
             
-            // 🟢 3. 实体转换 (Entity -> ExportVO)
+            //  3. 实体转换 (Entity -> ExportVO)
             List<StudentExportVO> exportList = userList.stream().map(user -> {
                 StudentExportVO vo = new StudentExportVO();
                 
@@ -335,7 +371,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
                 return vo;
             }).collect(Collectors.toList());
             
-            // 🟢 4. 写出响应流
+            // 4. 写出响应流
             response.setContentType("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
             response.setCharacterEncoding("utf-8");
             String fileName = URLEncoder.encode("人员数据表_" + System.currentTimeMillis(), StandardCharsets.UTF_8).replaceAll("\\+", "%20");
@@ -358,14 +394,14 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
     @Override
     @Transactional(rollbackFor = Exception.class)
     public boolean updateUser(SysOrdinaryUser user) {
-        // 密码加密：只有当 password 字段不为空时才加密更新，否则忽略
+        // 🛡️ 密码加密：只有当 password 字段不为空时才加密更新，否则忽略
         if (StrUtil.isNotBlank(user.getPassword())) {
             user.setPassword(BCrypt.hashpw(user.getPassword(), BCrypt.gensalt()));
         } else {
             user.setPassword(null);
         }
         
-        // 身份证校验
+        // 🛡️ 身份证校验
         if (StrUtil.isNotBlank(user.getIdCard())) {
             if (!IdcardUtil.isValidCard(user.getIdCard())) {
                 throw new ServiceException("身份证格式错误");
@@ -407,23 +443,77 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
         this.updateById(user);
     }
     
+    
+    // =================================================================================
+    // 5. 详情查询与隐私权限控制 (防刁民核心)
+    // =================================================================================
+    
+    @Override
+    public SysOrdinaryUser getUserDetail(Long targetUserId) {
+        // 1. 获取当前登录者 ID (通过 Sa-Token)
+        Long loginId = cn.dev33.satoken.stp.StpUtil.getLoginIdAsLong();
+        
+        // 2. 查询目标用户信息
+        SysOrdinaryUser targetUser = this.getById(targetUserId);
+        if (targetUser == null) {
+            throw new ServiceException("目标用户不存在");
+        }
+        
+        // 3. 判定权限级别
+        // A. 本人查看
+        boolean isSelf = loginId.equals(targetUserId);
+        
+        // B. 管理员查看 (由 DataAuditAspect 切面已经预设了一部分，这里可以二次确认)
+        boolean isAdmin = cn.dev33.satoken.stp.StpUtil.hasRole(RoleConstants.SUPER_ADMIN)
+                || cn.dev33.satoken.stp.StpUtil.hasRole(RoleConstants.DORM_MANAGER);
+        
+        // C. 室友判定：两人都在住且 dormId 相同
+        SysOrdinaryUser currentUser = this.getById(loginId);
+        boolean isRoommate = false;
+        if (currentUser != null && currentUser.getDormId() != null && targetUser.getDormId() != null) {
+            isRoommate = currentUser.getDormId().equals(targetUser.getDormId());
+        }
+        
+        // 4. 设置脱敏上下文标识
+        if (isSelf || isAdmin || isRoommate) {
+            // 符合“上帝模式”或“室友互助模式”，Jackson 序列化时将显示明文
+            com.mol.common.core.context.SecurityContext.setCanViewFullDetail(true);
+        } else {
+            // 陌生人查看，强制开启脱敏
+            com.mol.common.core.context.SecurityContext.setCanViewFullDetail(false);
+        }
+        
+        // 5. 特殊隔离：校外居住地址 (outside_address) 仅限管理员可见
+        // 即便是室友，也不能看对方校外住哪，防止顺藤摸瓜
+        if (!isAdmin && !isSelf && StrUtil.isNotBlank(targetUser.getOutsideAddress())) {
+            // 策略：如果是室友但不是管理员，直接在返回前对该字段脱敏
+            targetUser.setOutsideAddress(StrUtil.hide(targetUser.getOutsideAddress(), 3, targetUser.getOutsideAddress().length()));
+        }
+        
+        return targetUser;
+    }
+    
+    
     // =================================================================================
     // 私有辅助方法
     // =================================================================================
     
     /**
-     * 分配默认角色
-     * @param category 0-学生(角色ID:5), 1-教工(角色ID:6)
+     * 🛡️ 分配默认角色 (修正版)
+     * @param category 0-学生, 1-教工
      */
     private void assignDefaultRole(Long userId, Integer category) {
         SysUserRole ur = new SysUserRole();
         ur.setUserId(userId);
-        ur.setRoleId(category == 0 ? 5L : 6L);
+        
+        // 修正：直接使用参数 category 判断
+        ur.setRoleId(category == 0 ? RoleConstants.STUDENT_ID : RoleConstants.COLLEGE_TEACHER_ID);
+        
         userRoleMapper.insert(ur);
     }
     
     /**
-     * 生成唯一账号
+     * 🛡️ 生成唯一账号
      */
     private String generateUniqueAccount(SysOrdinaryUser user) {
         Integer year = user.getEnrollmentYear();
@@ -468,7 +558,7 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
     }
     
     /**
-     * 身份证元数据解析
+     * 🛡️ 身份证元数据解析
      */
     private void parseIdCardInfo(SysOrdinaryUser user) {
         String idCard = user.getIdCard();
@@ -499,5 +589,13 @@ public class SysOrdinaryUserServiceImpl extends ServiceImpl<SysOrdinaryUserMappe
     
     private boolean checkUsernameExists(String username) {
         return this.lambdaQuery().eq(SysOrdinaryUser::getUsername, username).exists();
+    }
+    
+    /**
+     *  检查管理员表是否存在该账号
+     */
+    private boolean checkAdminUsernameExists(String username) {
+        return adminUserMapper.exists(com.baomidou.mybatisplus.core.toolkit.Wrappers.<SysAdminUser>lambdaQuery()
+                .eq(SysAdminUser::getUsername, username));
     }
 }

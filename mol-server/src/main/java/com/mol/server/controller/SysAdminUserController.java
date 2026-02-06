@@ -1,15 +1,12 @@
 package com.mol.server.controller;
 
-import cn.dev33.satoken.annotation.SaCheckLogin;
 import cn.dev33.satoken.annotation.SaCheckRole;
 import cn.dev33.satoken.stp.StpUtil;
 import com.baomidou.mybatisplus.core.metadata.IPage;
 import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.mol.common.core.constant.RoleConstants;
 import com.mol.common.core.entity.SysAdminUser;
-import com.mol.common.core.entity.SysOrdinaryUser;
 import com.mol.common.core.exception.ServiceException;
-import com.mol.common.core.util.LoginHelper;
 import com.mol.common.core.util.R;
 import com.mol.server.service.SysAdminUserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,9 +17,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 系统管理员管理控制器
@@ -40,36 +34,7 @@ public class SysAdminUserController {
     
     private final SysAdminUserService adminUserService;
     
-    // =================================================================================
-    // 个人信息的聚合接口
-    // =================================================================================
-    @Operation(summary = "获取当前登录用户个人资料", description = "用于前端初始化 User Store")
-    @SaCheckLogin
-    @GetMapping("/profile")
-    public R<Map<String, Object>> getProfile() {
-        // 1. 获取当前登录ID
-        Long userId = LoginHelper.getUserId();
-        
-        // 2. 修正：调用 adminUserService 查管理员表
-        SysAdminUser user = adminUserService.getById(userId);
-        
-        if (user == null) return R.fail("用户不存在");
-        
-        // 3. 组装数据
-        Map<String, Object> result = new HashMap<>();
-        user.setPassword(null); // 擦除密码
-        result.put("userInfo", user);
-        
-        // 4. 获取角色列表获取角色和权限 (Sa-Token 会自动根据 LoginId 处理)
-        List<String> roleList = StpUtil.getRoleList();
-        result.put("roles", roleList);
-        
-        // 5. 获取权限列表 (例如 ["sys:user:add"])
-        List<String> permissionList = StpUtil.getPermissionList();
-        result.put("permissions", permissionList);
-        
-        return R.ok(result);
-    }
+    // 查个人信息，移交给 UserProfileController，具体参考 UserServiceImpl
     
     // =================================================================================
     // 1. 查询 (Read)

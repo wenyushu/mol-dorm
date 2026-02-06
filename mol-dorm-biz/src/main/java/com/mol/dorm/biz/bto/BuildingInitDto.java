@@ -23,7 +23,7 @@ public class BuildingInitDto implements Serializable {
     
     /**
      * 默认房间的性别
-     * 1-男, 2-女, 0-混合
+     * 1-男, 2-女, 3-混合
      * (如果是混合楼，通常默认设为混合，后续再单独调整某层为男/女)
      */
     private Integer defaultGender;

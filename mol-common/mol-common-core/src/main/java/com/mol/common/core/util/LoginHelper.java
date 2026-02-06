@@ -21,7 +21,7 @@ import lombok.NoArgsConstructor;
 public class LoginHelper {
     
     /**
-     * ✅ [新增] 判断当前用户是否为超级管理员
+     * 判断当前用户是否为超级管理员
      * 作用：用于业务代码中的越权判断 (如：维修工单完工、强制退宿等)
      */
     public static boolean isAdmin() {
@@ -74,30 +74,32 @@ public class LoginHelper {
     }
     
     /**
-     * 获取当前用户类型
-     * @return "admin" 或 "student" 对应的字符串
+     * 获取当前用户类型 (防刁民加强版)
+     *
+     * @return "admin" 或 "student"
      */
     public static String getUserType() {
         try {
-            if (!isLogin()) {
-                return null;
-            }
+            if (!isLogin()) return null;
             
-            // 1. 优先从 Session 拿 (AuthServiceImpl 里存的是 String 类型的 "admin" 或 "student")
+            // 1. 优先从 Session 拿 (这是最稳的，因为登录时我们手动存了)
             SaSession session = StpUtil.getSession(false);
             if (session != null) {
                 String type = session.getString("type");
-                if (StrUtil.isNotBlank(type)) {
-                    return type;
-                }
+                if (StrUtil.isNotBlank(type)) return type;
             }
             
-            // 2. 兜底：解析 Token 前缀 ("0:1001" -> "0")
+            // 2. 进阶：通过 Sa-Token 的 LoginDevice (设备/类型) 判定
+            // 假设你在登录时使用了 StpUtil.login(id, "admin")
+            String loginType = StpUtil.getLoginType();
+            if (StrUtil.isNotBlank(loginType)) return loginType;
+            
+            // 3. 兜底：解析 LoginId 字符串 (Type:ID)
             String loginId = StpUtil.getLoginIdAsString();
-            if (StrUtil.isBlank(loginId) || !loginId.contains(":")) {
-                return null;
+            if (loginId.contains(":")) {
+                return loginId.split(":")[0];
             }
-            return loginId.split(":")[0];
+            return null;
         } catch (Exception e) {
             return null;
         }
@@ -175,6 +177,37 @@ public class LoginHelper {
             SaSession session = StpUtil.getSession(false);
             if (session != null) {
                 return session.getString("role");
+            }
+            return null;
+        } catch (Exception e) {
+            return null;
+        }
+    }
+    
+    /**
+     * 判断目标 ID 是否为当前登录用户本人
+     * 用于：防止 A 用户通过 Postman 修改 B 用户的资料
+     */
+    public static boolean isSelf(Long targetUserId) {
+        Long currentId = getUserId();
+        return currentId != null && currentId.equals(targetUserId);
+    }
+    
+    /**
+     * 获取当前登录人负责的楼栋 ID
+     * 🛡️ [防刁民逻辑]：
+     * 1. 登录时，系统已将该宿管负责的 buildingId 写入 SaSession。
+     * 2. 此处直接读取，避免了频繁查库，提高了驾驶舱的响应速度。
+     */
+    public static Long getManagedBuildingId() {
+        try {
+            if (!isLogin()) return null;
+            
+            // 直接从 Sa-Token 的 Session 中读取登录时缓存的楼栋信息
+            SaSession session = StpUtil.getSession(false);
+            if (session != null) {
+                Object buildingId = session.get("buildingId");
+                return buildingId != null ? Convert.toLong(buildingId) : null;
             }
             return null;
         } catch (Exception e) {

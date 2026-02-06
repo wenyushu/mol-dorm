@@ -7,59 +7,51 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * 宿舍分配健康度监控/校验报告
- * <p>
- * 用于实时展示校区分配进度及检测数据异常（影子/幽灵/超卖数据）。
- * 1. 幽灵床位：床位表显示有人(ID)，但学生表里查无此人（可能是退学没清床位，或脏数据）。
- * 2. 孤儿用户：系统显示该学生"已住校"，但找不到他的床位记录。
- * 3. 超卖房间：房间住的人数 > 额定床位数（物理上不可能，属于严重BUG）。
- * 4. 数据不同步：Room表的 current_num 字段与 Bed 表实际占用数不一致。
- * </p>
+ * 分配体检报告视图对象
+ * 🛡️ [防刁民审计]：全方位展示分配异常，不漏掉任何一个幽灵床位。
  */
 @Data
-@Schema(description = "分配监控与健康报告")
+@Schema(description = "校区分配体检报告")
 public class AllocationStatsVO {
     
     @Schema(description = "校区名称")
     private String campusName;
     
-    @Schema(description = "总学生数 (该校区在籍，包含休学/走读)")
-    private Long totalStudents;
+    @Schema(description = "总学生人数")
+    private Long totalStudents = 0L;
     
-    // ================= 正常数据统计 =================
+    @Schema(description = "需住校总人数")
+    private Long needDormCount = 0L;
     
-    @Schema(description = "已分配人数 (状态正常+住校+有床位)")
-    private Long allocatedCount;
+    @Schema(description = "已分配人数")
+    private Long allocatedCount = 0L;
     
-    @Schema(description = "待分配人数 (状态正常+住校+无床位)")
-    private Long unallocatedCount;
+    @Schema(description = "未分配人数")
+    private Long unallocatedCount = 0L;
     
-    @Schema(description = "无需分配人数 (走读/校外住宿)")
-    private Long offCampusCount;
-    
-    @Schema(description = "特殊状态人数 (休学/停用/保留学籍)")
-    private Long suspendedCount;
-    
-    @Schema(description = "分配进度 (百分比)")
+    @Schema(description = "分配进度百分比 (如: 95.5%)")
     private String progressRate;
     
-    // ================= 异常检测 (红色警报) =================
+    // --- 🚨 异常统计项 (报错补全点) ---
     
-    @Schema(description = "数据异常总数")
-    private Integer errorCount;
+    @Schema(description = "状态异常人数 (休学/停用但占床)")
+    private Long suspendedCount = 0L; // 🟢 补上这个字段，解决报错！
     
-    @Schema(description = "幽灵床位 (有占位 ID 但查无此人/人已退宿)")
-    private Integer ghostBedCount;
+    @Schema(description = "走读生人数")
+    private Long offCampusCount = 0L; // 🟢 补上这个字段！
     
-    @Schema(description = "孤儿用户 (系统标记已住但查无床位)")
-    private Integer orphanUserCount;
+    @Schema(description = "幽灵床位总数 (占床但查无此人)")
+    private Integer ghostBedCount = 0;
     
-    @Schema(description = "超卖房间 (实住人数 > 额定容量)")
-    private Integer oversoldRoomCount;
+    @Schema(description = "超卖房间总数 (实住 > 容量)")
+    private Integer oversoldRoomCount = 0;
     
-    @Schema(description = "数据不同步 (房间计数器 != 实际床位占用数)")
-    private Integer syncErrorCount;
+    @Schema(description = "计数不同步房间数 (Room表与Bed表不一致)")
+    private Integer syncErrorCount = 0;
     
-    @Schema(description = "异常详情列表 (仅展示前20条)")
+    @Schema(description = "总异常风险点数量")
+    private Integer errorCount = 0;
+    
+    @Schema(description = "异常明细列表")
     private List<String> errorDetails = new ArrayList<>();
 }

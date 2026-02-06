@@ -34,7 +34,7 @@ public class FileCleanupTask {
     private String basePath;
     
     /**
-     * 🟢 核心解耦点：
+     * 核心解耦点：
      * Spring 会自动将所有实现了 IFileUrlProvider 接口的 Bean 注入到这个列表中。
      * 包括：
      * 1. mol-dorm-biz 里的 RepairOrderFileProvider (报修图)

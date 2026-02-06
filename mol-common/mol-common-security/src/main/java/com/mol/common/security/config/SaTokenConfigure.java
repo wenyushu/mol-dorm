@@ -34,9 +34,9 @@ public class SaTokenConfigure implements WebMvcConfigurer {
                 .excludePathPatterns(
                     // ================== 1. 业务白名单 (精准匹配) ==================
                         // 匹配 ModulePathConfig 的前缀
-                        "/server/auth/login",   // 系统管理员登录
-                        "/server/auth/check",   // Token 检查
-                        // "/server/auth/register", // 如果有注册功能
+                        "/auth/login",   // 系统管理员登录
+                        "/auth/check",   // Token 检查
+                        "/auth/register", // 如果有注册功能
 
                         // 如果宿舍模块也有独立的登录接口 (虽然通常统一用 server 的，但以防万一)
                         "/dorm/auth/login",

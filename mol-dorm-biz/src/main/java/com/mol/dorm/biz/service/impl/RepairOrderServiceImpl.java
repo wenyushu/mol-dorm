@@ -1,177 +1,172 @@
 package com.mol.dorm.biz.service.impl;
 
 import cn.hutool.core.util.IdUtil;
-import cn.hutool.core.util.ObjectUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
-import com.baomidou.mybatisplus.core.toolkit.Wrappers;
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
+import cn.hutool.core.util.StrUtil;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.mol.common.core.constant.RoleConstants;
+import com.mol.common.core.constant.DormConstants;
 import com.mol.common.core.exception.ServiceException;
-import com.mol.common.core.util.LoginHelper;
 import com.mol.dorm.biz.entity.RepairOrder;
 import com.mol.dorm.biz.mapper.RepairOrderMapper;
+import com.mol.dorm.biz.service.DormFixedAssetService;
+import com.mol.dorm.biz.service.DormRoomService;
 import com.mol.dorm.biz.service.RepairOrderService;
+import com.mol.dorm.biz.service.WalletTransactionService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * 报修工单服务
- * <p>
- * 核心修复：
- * 1. 完工校验：只有被指派的维修工本人(或超管)才能点完工。
- * 2. 评价校验：只有申请人本人才能评价。
- * 3. 提交校验：强制绑定当前登录用户，防止代提。
- * </p>
- *
- * @author mol
+ * 报修工单业务核心实现 - 财务资产全联动版
+ * 🛡️ [防刁民设计]：
+ * 1. 状态锁：资产报修即锁定，完工或驳回才释放，防止带障运行。
+ * 2. 财务闭环：判定为人为损坏时，结案动作与扣费流水绑定在一个事务中，欠费则无法结案。
+ * 3. 房间体检：修复动作自动触发 evaluateRoomSafety，实现资源“健康上线”。
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class RepairOrderServiceImpl extends ServiceImpl<RepairOrderMapper, RepairOrder> implements RepairOrderService {
     
-    // 状态常量: 0待处理 1维修中 2已完成 3已评价
-    private static final int STATUS_PENDING = 0;
-    private static final int STATUS_PROCESSING = 1;
-    private static final int STATUS_FIXED = 2;
-    private static final int STATUS_RATED = 3;
+    private final DormFixedAssetService assetService;
+    private final DormRoomService roomService;
+    private final RepairOrderMapper repairOrderMapper;
+    private final WalletTransactionService trxService;
     
+    /**
+     * 1. 提交报修
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void submit(Long studentId, Long roomId, String desc, String images) {
-        // 1. 🛡️ 防刁民：身份一致性校验
-        // 防止恶意用户通过接口抓包，修改 studentId 参数帮别人（或者恶搞别人）提交工单
-        Long currentUserId = LoginHelper.getUserId();
-        if (currentUserId != null && !LoginHelper.isAdmin() && !currentUserId.equals(studentId)) {
-            throw new ServiceException("非法操作：只能为您自己的账号提交报修");
+    public void submitRepair(RepairOrder order) {
+        if (order.getRoomId() == null || StrUtil.isBlank(order.getAssetCode())) {
+            throw new ServiceException("报修失败：房间信息或资产条码缺失");
         }
         
-        RepairOrder order = new RepairOrder();
-        // 生成工单号 R + 纳秒ID (简化版，生产环境建议用 Redis 自增或雪花算法)
-        order.setOrderNo("R" + IdUtil.getSnowflakeNextIdStr());
-        order.setApplicantId(studentId);
-        order.setRoomId(roomId);
-        order.setDescription(desc);
-        order.setImages(images);
-        order.setStatus(STATUS_PENDING);
+        // [防刁民]：拦截重复报修，防止师傅跑空单
+        Long existingOrderId = repairOrderMapper.checkAssetUnderRepair(order.getAssetCode());
+        if (existingOrderId != null) {
+            throw new ServiceException("该设备已处于报修流程中，请勿重复刷单！");
+        }
         
-        this.save(order);
-        log.info("工单提交成功: No={}, Applicant={}", order.getOrderNo(), studentId);
+        order.setOrderNo("REP" + IdUtil.getSnowflakeNextIdStr());
+        order.setStatus(0); // 0-待处理
+        order.setCreateTime(LocalDateTime.now());
+        
+        if (!this.save(order)) {
+            throw new ServiceException("系统繁忙，提交失败");
+        }
+        
+        // 资产锁定为 50 (维修中)
+        assetService.updateAssetStatusByCode(order.getRoomId(), order.getAssetCode(), DormConstants.LC_REPAIRING);
+        // 房间安全等级重估
+        roomService.evaluateRoomSafety(order.getRoomId());
+        
+        log.info("🛠️ 报修启动：工单 {} 已锁定资产 {}", order.getOrderNo(), order.getAssetCode());
     }
     
+    /**
+     * 2. 开始维修 (接单)
+     * 🛡️ [防刁民]：利用数据库行锁 takeOrder 确保高并发抢单的唯一性。
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void assign(Long orderId, Long repairmanId) {
-        RepairOrder order = this.getById(orderId);
-        if (order == null) throw new ServiceException("工单不存在");
-        
-        // 状态检查：只有待处理或维修中(换人)可以指派
-        if (order.getStatus() != STATUS_PENDING && order.getStatus() != STATUS_PROCESSING) {
-            throw new ServiceException("当前状态无法指派维修人员");
+    public void startRepair(Long orderId, Long repairmanId) {
+        int rows = repairOrderMapper.takeOrder(orderId, repairmanId);
+        if (rows == 0) {
+            throw new ServiceException("接单失败：工单已被抢占或状态已变更");
         }
-        
-        order.setRepairmanId(repairmanId);
-        order.setStatus(STATUS_PROCESSING); // 状态流转 -> 维修中
-        this.updateById(order);
-        
-        log.info("工单指派成功: No={}, Repairman={}", order.getOrderNo(), repairmanId);
+        log.info("🔧 师傅接单：师傅 ID {} 承接了工单 {}", repairmanId, orderId);
     }
     
+    /**
+     * 3. 完工结项 (核心财务联动)
+     * @param isHumanDamage 是否为人为损坏 (决定是否从学生钱包扣钱)
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void complete(Long orderId, String remark) {
+    public void finishRepair(Long orderId, String comment, Integer rating, BigDecimal materialCost, Boolean isHumanDamage) {
         RepairOrder order = this.getById(orderId);
-        if (order == null) throw new ServiceException("工单不存在");
+        if (order == null) throw new ServiceException("异常：工单不存在");
         
-        // 1. 状态检查
-        if (order.getStatus() != STATUS_PROCESSING) {
-            throw new ServiceException("只有【维修中】的工单才能进行完工操作");
+        // A. 状态审计：结案幂等性校验
+        if (order.getStatus() != 1 && order.getStatus() != 5) {
+            throw new ServiceException("操作拦截：当前工单状态不支持完工操作");
         }
         
-        // 2. 🛡️ 防刁民：操作权校验
-        // 只有“被指派的维修工本人”或者“管理员”可以点完工
-        // 防止维修工A 恶意把 维修工B 的单子点了
-        Long currentUserId = LoginHelper.getUserId();
-        boolean isTheRepairman = ObjectUtil.equal(order.getRepairmanId(), currentUserId);
-        
-        if (!LoginHelper.isAdmin() && !isTheRepairman) {
-            throw new ServiceException("无权操作：您不是该工单的指派维修员");
+        // B. [财务重头戏]：人为损坏赔偿判定
+        if (Boolean.TRUE.equals(isHumanDamage) && materialCost != null && materialCost.compareTo(BigDecimal.ZERO) > 0) {
+            log.warn("💳 发现人为损坏：准备对房间 {} 执行维修扣费 {} 元", order.getRoomId(), materialCost);
+            
+            // 💡 [闭环关键]：如果 WalletTransactionService 余额不足抛出异常，整个事务回滚，工单状态不会变
+            trxService.executeTransaction(
+                    order.getRoomId(),
+                    materialCost.negate(), // 取负值执行扣费
+                    4,                     // 业务类型：4-维修耗材支出 (赔偿)
+                    order.getOrderNo(),
+                    "报修单人为损坏追偿：" + order.getAssetCode()
+            );
         }
         
-        order.setStatus(STATUS_FIXED);
+        // C. 更新工单档案
+        order.setStatus(2); // 2-已修复(待评价)
         order.setFinishTime(LocalDateTime.now());
-        // 追加反馈信息
-        if (remark != null) {
-            String oldRemark = order.getRemark() == null ? "" : order.getRemark() + "; ";
-            order.setRemark(oldRemark + "维修反馈: " + remark);
-        }
+        order.setComment(comment);
+        order.setRating(rating == null ? 5 : rating);
+        order.setMaterialCost(materialCost);
         this.updateById(order);
         
-        log.info("工单完工: No={}, Operator={}", order.getOrderNo(), currentUserId);
+        // D. 释放资产资源 & 房间体检恢复
+        if (StrUtil.isNotBlank(order.getAssetCode())) {
+            assetService.updateAssetStatusByCode(order.getRoomId(), order.getAssetCode(), DormConstants.LC_NORMAL);
+            roomService.evaluateRoomSafety(order.getRoomId());
+        }
+        
+        log.info("✅ 结案成功：工单 {} 完工。人为损坏: {}, 耗材费: {}", order.getOrderNo(), isHumanDamage, materialCost);
     }
     
+    /**
+     * 4. 挂起工单 (待大修)
+     */
     @Override
     @Transactional(rollbackFor = Exception.class)
-    public void rate(Long orderId, Integer rating, String comment) {
+    public void suspendRepair(Long orderId, String reason) {
         RepairOrder order = this.getById(orderId);
-        if (order == null) throw new ServiceException("工单不存在");
-        
-        // 1. 状态检查
-        if (order.getStatus() != STATUS_FIXED) {
-            throw new ServiceException("请等待维修完成后再进行评价");
+        if (order == null || order.getStatus() >= 2) {
+            throw new ServiceException("挂起失败：单据状态已在结案流程中");
         }
         
-        // 2. 🛡️ 防刁民：申请人校验
-        // 只有“申请人本人”可以评价，防止被恶意刷分
-        Long currentUserId = LoginHelper.getUserId();
-        if (!ObjectUtil.equal(order.getApplicantId(), currentUserId)) {
-            throw new ServiceException("无权评价：您不是该工单的申请人");
-        }
-        
-        order.setRating(rating);
-        order.setComment(comment);
-        order.setStatus(STATUS_RATED); // 流程结束
+        order.setStatus(5); // 5-待大修(挂起)
+        order.setRemark("【挂起说明】" + reason);
         this.updateById(order);
         
-        log.info("工单评价完成: No={}, Rating={}", order.getOrderNo(), rating);
+        log.warn("⚠️ 工单挂起：单据 {} 转入长周期维修", order.getOrderNo());
     }
     
+    /**
+     * 5. 驳回工单 (释放资源)
+     */
     @Override
-    public Page<RepairOrder> getPage(Page<RepairOrder> page, RepairOrder query, Long currentUserId, String userRole) {
-        LambdaQueryWrapper<RepairOrder> wrapper = Wrappers.lambdaQuery();
-        
-        // 1. 数据权限过滤 (Data Scope)
-        if (RoleConstants.STUDENT.equals(userRole)) {
-            // 学生：只能看【自己提交】的
-            wrapper.eq(RepairOrder::getApplicantId, currentUserId);
-        }
-        else if (RoleConstants.REPAIR_MASTER.equals(userRole)) { // 假设角色Key是 repair_master
-            // 维修工：看【指派给自己】的 + 【所有待分配】的(抢单模式可选)
-            // 这里采用严格模式：只看自己的任务
-            wrapper.eq(RepairOrder::getRepairmanId, currentUserId);
-        }
-        // 管理员/宿管：查看所有 (无需加限制条件)
-        
-        // 2. 动态查询条件
-        if (query.getStatus() != null) {
-            wrapper.eq(RepairOrder::getStatus, query.getStatus());
-        }
-        if (query.getRoomId() != null) {
-            wrapper.eq(RepairOrder::getRoomId, query.getRoomId());
-        }
-        if (query.getOrderNo() != null) {
-            wrapper.like(RepairOrder::getOrderNo, query.getOrderNo());
+    @Transactional(rollbackFor = Exception.class)
+    public void rejectRepair(Long orderId, String reason) {
+        RepairOrder order = this.getById(orderId);
+        if (order == null || order.getStatus() >= 2) {
+            throw new ServiceException("驳回拦截：工单已完工");
         }
         
-        // 3. 排序：未完成的优先，时间倒序
-        wrapper.orderByAsc(RepairOrder::getStatus)
-                .orderByDesc(RepairOrder::getCreateTime);
+        order.setStatus(4); // 4-已驳回
+        order.setRemark("【驳回原因】" + reason);
+        this.updateById(order);
         
-        return this.page(page, wrapper);
+        // 释放资产状态回到正常，避免因误报修导致资产永远被锁定
+        if (StrUtil.isNotBlank(order.getAssetCode())) {
+            assetService.updateAssetStatusByCode(order.getRoomId(), order.getAssetCode(), DormConstants.LC_NORMAL);
+            roomService.evaluateRoomSafety(order.getRoomId());
+        }
+        
+        log.info("🚫 驳回成功：工单 {} 状态已撤销", order.getOrderNo());
     }
 }

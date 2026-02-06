@@ -29,9 +29,6 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 
 /**
  * 普通用户管理控制器 (学生/教工)
@@ -52,38 +49,7 @@ public class SysOrdinaryUserController {
     private final SysOrdinaryUserService userService;
     private final SysUserRoleMapper userRoleMapper;
     
-    
-    // =================================================================================
-    // 个人信息的聚合接口
-    // =================================================================================
-    @Operation(summary = "获取当前登录用户个人资料", description = "用于前端初始化 User Store")
-    @SaCheckLogin
-    @GetMapping("/profile")
-    public R<Map<String, Object>> getProfile() {
-        // 1. 获取当前登录ID
-        Long userId = LoginHelper.getUserId();
-        
-        // 2. 调用 SysOrdinaryUser 查普通用户表
-        SysOrdinaryUser user = userService.getById(userId);
-        
-        if (user == null) return R.fail("用户不存在");
-        
-        // 3. 组装数据
-        Map<String, Object> result = new HashMap<>();
-        user.setPassword(null); // 擦除密码
-        result.put("userInfo", user);
-        
-        // 4. 获取角色列表获取角色和权限 (Sa-Token 会自动根据 LoginId 处理)
-        List<String> roleList = StpUtil.getRoleList();
-        result.put("roles", roleList);
-        
-        // 5. 获取权限列表 (例如 ["sys:user:add"])
-        List<String> permissionList = StpUtil.getPermissionList();
-        result.put("permissions", permissionList);
-        
-        return R.ok(result);
-    }
-    
+    // 查个人信息，移交给 UserProfileController，具体参考 UserServiceImpl
     
     // =================================================================================
     // 1. 基础查询 (Read)
@@ -277,9 +243,11 @@ public class SysOrdinaryUserController {
     // 6. 密码管理 (Password) - 高危操作
     // =================================================================================
     
+    // ❌ 已删除 updatePwd (自己改密码) -> 移交 UserProfileController
+    
     @Operation(summary = "管理员重置密码", description = "强制重置用户的密码，无视旧密码。")
     // 1：权限收紧，仅限超级管理员 (RoleConstants.SUPER_ADMIN)
-    // 之前允许 DEPT_ADMIN，现在已移除，防止部门管理员滥用职权
+    // 之前允许 DEPT_ADMIN，现在已移除，防止部门的管理员滥用职权
     @SaCheckRole(RoleConstants.SUPER_ADMIN)
     @PostMapping("/reset-pwd")
     public R<Void> resetPwd(
@@ -300,32 +268,6 @@ public class SysOrdinaryUserController {
         return R.ok(null, "密码重置成功，目标用户已被强制下线");
     }
     
-    @Operation(summary = "修改个人密码", description = "用户自行修改密码，需校验旧密码")
-    @SaCheckLogin // 只要登录就能改
-    @PostMapping("/update-pwd")
-    public R<Void> updatePwd(
-            @Parameter(description = "旧密码") @RequestParam String oldPassword,
-            @Parameter(description = "新密码") @RequestParam String newPassword) {
-        
-        // 🛡️ 防刁民核心：移除 Controller 参数中的 userId
-        // 永远不要相信前端传来的 "userId"，必须从 Token 中解析当前登录用户 ID
-        // 获取当前操作者 ID, 防止用户 A 修改用户 B 的密码
-        Long currentUserId = LoginHelper.getUserId();
-        
-        // 🛡️ 防刁民
-        if (currentUserId == null) {
-            throw new ServiceException("登录状态已失效");
-        }
-        
-        // 执行修改
-        userService.updatePassword(currentUserId, oldPassword, newPassword);
-        
-        // 修改成功后，强制注销，要求重新登录以验证新密码
-        StpUtil.logout();
-        
-        return R.ok(null, "修改成功，请重新登录");
-    }
-    
     
     // =================================================================================
     // 7. 状态管理 (Status) - 遗漏点补全
@@ -336,7 +278,7 @@ public class SysOrdinaryUserController {
     @SaCheckRole(value = {RoleConstants.SUPER_ADMIN, RoleConstants.DEPT_ADMIN}, mode = SaMode.OR)
     @PutMapping("/change-status")
     public R<Void> changeStatus(
-            @Parameter(description = "用户ID") @RequestParam Long userId,
+            @Parameter(description = "用户 ID") @RequestParam Long userId,
             @Parameter(description = "新状态 (0/1)") @RequestParam String status) {
         
         // 1. 校验参数

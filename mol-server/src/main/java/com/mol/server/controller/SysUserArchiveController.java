@@ -48,7 +48,7 @@ public class SysUserArchiveController {
         // 3. 执行核心逻辑
         archiveService.executeUserArchive(userId, typeEnum, reason, operatorName);
         
-        // 🟢 修复点：调用 R.ok(data, msg)，将 data 设为 null，消息设为自定义字符串
+        // 修复点：调用 R.ok(data, msg)，将 data 设为 null，消息设为自定义字符串
         return R.ok(null, "异动处理成功");
     }
 }

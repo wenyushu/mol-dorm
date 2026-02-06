@@ -4,47 +4,42 @@ import com.baomidou.mybatisplus.annotation.IdType;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.mol.common.core.entity.BaseEntity;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 
 /**
  * 部门实体
- * (存放于 mol-server 业务模块)
+ * 对应表: sys_dept
  */
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("sys_dept")
+@Schema(description = "部门实体")
 public class SysDept extends BaseEntity {
     
-    /**
-     * 部门 ID (主键)
-     * 必须显式定义，否则报错 getId 找不到
-     */
-    @TableId(type = IdType.AUTO)
+    @Schema(description = "主键ID")
+    @TableId(type = IdType.AUTO) // 对应数据库的 AUTO_INCREMENT
     private Long id;
     
-    /**
-     * 部门名称 (如：后勤处、保卫科)
-     */
+    @Schema(description = "部门名称")
     private String name;
     
-    /**
-     * 部门编码
-     */
+    @Schema(description = "部门编码")
     private String code;
     
-    /**
-     * 部门简介
-     */
+    @Schema(description = "所属校区 ID")
+    private Long campusId;
+    
+    @Schema(description = "部门简介")
     private String intro;
     
-    /**
-     * 显示排序
-     */
+    @Schema(description = "父部门ID")
+    private Long parentId;
+    
+    @Schema(description = "排序")
     private Integer sort;
     
-    /**
-     * 状态 (0正常 1停用)
-     */
+    @Schema(description = "状态 (0正常 1停用)")
     private String status;
 }

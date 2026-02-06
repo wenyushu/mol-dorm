@@ -39,5 +39,7 @@ public class LoginVO {
     private String avatar;
     
     // 新增：告诉前端是否需要强制改密
+    // 这是一个非常棒的设计， 前端可以根据这个 boolean 弹窗提示用户改密
+    @Schema(description = "是否需要强制修改密码", example = "true")
     private Boolean needChangePwd;
 }

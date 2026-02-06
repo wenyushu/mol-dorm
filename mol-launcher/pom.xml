@@ -11,7 +11,7 @@
     </parent>
 
     <artifactId>mol-launcher</artifactId>
-    <description>MOL-DORM 项目聚合启动模块 - 仅用于本地开发环境一键启动</description>
+    <description>MOL-DORM 聚合启动模块</description>
 
     <dependencies>
         <dependency>
@@ -32,18 +32,19 @@
         </dependency>
 
         <dependency>
-            <groupId>org.springdoc</groupId>
-            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <groupId>com.baomidou</groupId>
+            <artifactId>mybatis-plus-spring-boot3-starter</artifactId>
         </dependency>
-        <dependency>
-            <groupId>org.mybatis</groupId>
-            <artifactId>mybatis-spring</artifactId>
-            <version>3.0.5</version>
-            <scope>compile</scope>
-        </dependency>
+
         <dependency>
             <groupId>cn.hutool</groupId>
             <artifactId>hutool-all</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.xiaoymin</groupId>
+            <artifactId>knife4j-openapi3-jakarta-spring-boot-starter</artifactId>
+            <version>4.3.0</version>
         </dependency>
     </dependencies>
 

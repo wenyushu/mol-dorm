@@ -7,6 +7,7 @@ import com.mol.common.core.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 /**
  * 学院实体类
@@ -17,6 +18,7 @@ import lombok.EqualsAndHashCode;
  * @author mol
  */
 @Data
+@Accessors(chain = true) // ✨ 父类及子类支持链式返回
 @EqualsAndHashCode(callSuper = true)
 @TableName("sys_college")
 @Schema(description = "学院信息")

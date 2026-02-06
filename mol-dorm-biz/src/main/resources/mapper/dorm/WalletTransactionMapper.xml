@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.mol.dorm.biz.mapper.WalletTransactionMapper">
+
+    <resultMap id="BaseResultMap" type="com.mol.dorm.biz.entity.WalletTransaction">
+        <id column="id" property="id" />
+        <result column="trx_no" property="trxNo" />
+        <result column="room_id" property="roomId" />
+        <result column="trx_type" property="trxType" />
+        <result column="amount" property="amount" />
+        <result column="post_balance" property="postBalance" />
+        <result column="biz_no" property="bizNo" />
+        <result column="remark" property="remark" />
+        <result column="create_by" property="createBy" />
+        <result column="create_time" property="createTime" />
+        <result column="update_by" property="updateBy" />
+        <result column="update_time" property="updateTime" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+    <select id="selectRoomFinancialSummary" resultType="java.util.Map">
+        SELECT
+            SUM(CASE WHEN amount > 0 THEN amount ELSE 0 END) as totalIn,
+            SUM(CASE WHEN amount &lt; 0 THEN amount ELSE 0 END) as totalOut,
+            COUNT(id) as trxCount
+        FROM biz_wallet_transaction
+        WHERE room_id = #{roomId}
+          AND del_flag = '0'
+          AND create_time BETWEEN #{beginTime} AND #{endTime}
+    </select>
+
+    <select id="countByBizNo" resultType="java.lang.Integer">
+        SELECT COUNT(1) FROM biz_wallet_transaction
+        WHERE biz_no = #{bizNo}
+          AND room_id = #{roomId}
+          AND del_flag = '0'
+    </select>
+
+    <select id="selectTopEnergyConsumingRooms" resultType="java.util.Map">
+        SELECT
+            r.room_no as roomNo,
+            b.building_name as buildingName,
+            ABS(SUM(t.amount)) as totalEnergyCost
+        FROM biz_wallet_transaction t
+                 JOIN dorm_room r ON t.room_id = r.id
+                 JOIN dorm_building b ON r.building_id = b.id
+        WHERE t.trx_type IN (2, 3)
+          AND t.del_flag = '0'
+        GROUP BY t.room_id
+        ORDER BY totalEnergyCost DESC
+            LIMIT #{limit}
+    </select>
+
+    <select id="selectBuildingBillSummary" resultType="java.util.Map">
+        SELECT
+            IFNULL(SUM(CASE WHEN t.amount > 0 THEN t.amount ELSE 0 END), 0) as totalIncome,
+            IFNULL(SUM(CASE WHEN t.amount &lt; 0 THEN ABS(t.amount) ELSE 0 END), 0) as totalOutcome
+        FROM biz_wallet_transaction t
+                 INNER JOIN dorm_room r ON t.room_id = r.id
+        WHERE r.building_id = #{buildingId}
+          AND DATE_FORMAT(t.create_time, '%Y-%m') = #{month}
+          AND t.del_flag = '0'
+    </select>
+
+</mapper>

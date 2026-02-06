@@ -3,22 +3,37 @@ package com.mol.dorm.biz.service;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.mol.dorm.biz.entity.DormFloor;
 
+import java.util.List;
+
 /**
- * 宿舍楼层服务接口
+ * 楼层管理服务接口
+ * 🛡️ [防刁民设计]：
+ * 1. 性别一致性：强制校验楼层性别是否符合所属楼栋的全局性别限制。
+ * 2. 状态级联：提供整层封闭/开启的快速熔断接口。
  */
 public interface DormFloorService extends IService<DormFloor> {
     
     /**
-     * 新增楼层 (带防刁民校验)
+     * 安全保存/修改楼层
      * @param floor 楼层实体
-     * @return 是否成功
      */
-    boolean saveFloor(DormFloor floor);
+    void saveFloorStrict(DormFloor floor);
     
     /**
-     * 删除楼层 (带防孤儿校验)
-     * @param floorId 楼层 ID
-     * @return 是否成功
+     * 物理熔断：整层封闭/装修切换
+     * @param floorId 楼层ID
+     * @param status 目标状态 (20-正常, 40-整层装修, 0-停止)
      */
-    boolean removeFloor(Long floorId);
+    void updateFloorStatus(Long floorId, Integer status);
+    
+    /**
+     * 物理清理：安全删除楼层
+     * @param floorId 楼层ID
+     */
+    void removeFloorStrict(Long floorId);
+    
+    /**
+     * 获取指定楼栋下的所有楼层
+     */
+    List<DormFloor> getByBuilding(Long buildingId);
 }

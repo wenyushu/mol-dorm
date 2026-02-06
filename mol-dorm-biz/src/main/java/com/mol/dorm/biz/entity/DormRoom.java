@@ -3,82 +3,90 @@ package com.mol.dorm.biz.entity;
 import com.baomidou.mybatisplus.annotation.*;
 import com.mol.common.core.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Pattern;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 import java.io.Serial;
+import java.math.BigDecimal;
 
 /**
- * 宿舍房间实体类
+ * 房间实体类 - 资源树 Level 4
  */
 @Data
+@Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @TableName("dorm_room")
-@Schema(description = "宿舍房间对象")
+@Schema(description = "房间层级：资源饱和度计算与费用载体")
 public class DormRoom extends BaseEntity {
-    
     @Serial
     private static final long serialVersionUID = 1L;
     
     @TableId(type = IdType.AUTO)
     private Long id;
     
-    // 🔗 归属：校区 + 楼栋 + 楼层 (全链路冗余)
-    @Schema(description = "所属校区 ID (冗余)")
+    // 🔗 冗余链路设计：提升大屏数据穿透速度
     private Long campusId;
-    @Schema(description = "所属楼栋 ID (冗余)")
     private Long buildingId;
-    @Schema(description = "所属楼层 ID (关联 dorm_floor)")
     private Long floorId;
     
-    // 冗余字段：方便不连表直接显示 "3 楼"
-    @Schema(description = "所在楼层号 (如: 3)")
-    private Integer floorNo;
+    @Schema(description = "物理楼层号")
+    @TableField("floor_num") // 确保与数据库字段名一致
+    private Integer floorNum;
     
-    @NotBlank(message = "房间号不能为空")
-    @Schema(description = "房间号 (如: 305)")
+    @Schema(description = "物理房间号 (如: 305)")
     private String roomNo;
     
-    @Schema(description = "户型")
+    @Schema(description = "房型描述 (如: 四人间)")
+    @TableField("apartment_type")
     private String apartmentType;
     
-    @Schema(description = "核定床位数")
+    @Schema(description = "核定总床位容量")
     private Integer capacity;
     
-    @Schema(description = "当前居住人数")
+    @Schema(description = "当前实际入住人数")
     private Integer currentNum;
     
+    @Schema(description = "住宿费标准(元/学年)")
+    private BigDecimal accommodationFee;
+    
     /**
-     * 🛡️ 房间性别:
-     * 必须严格对应 SysOrdinaryUser.gender
-     * 0: 女
-     * 1: 男
-     * 这里的 String 类型是为了匹配数据库 char(1) 和身份证标准。
+     * 🛡️ 房间性别限制 (与用户表 gender 保持一致的 String 类型)
+     * "1": 男寝, "0": 女寝 (🛡️防刁民：代码中强制校验此值与 Floor 的一致性)
      */
-    @NotBlank(message = "房间性别限制不能为空")
-    @Pattern(regexp = "[01]", message = "房间性别数据异常 (0-女 1-男)")
-    @Schema(description = "房间性别: 0-女 1-男")
+    @Schema(description = "性别: 0-女, 1-男")
     private String gender;
     
     /**
-     * 🚦 房间状态机 (语义化升级):
-     * 10: 正常(未满) - 绿色，可分配
-     * 20: 正常(满员) - 黄色，不可分配
-     * 30: 保留(占用) - 灰色，被征用
-     * 40: 维修(停用) - 红色，临时故障
-     * 41: 装修(停用) - 红色，封闭施工
-     * 42: 损坏(停用) - 红色，危房/严重损坏
+     * 🛡️ 冗余字段：房间的用途 (0-学生, 1-教工)
+     * [防刁民] 虽然属于楼栋的属性，但在房间层冗余，可极大提升校验性能。
      */
-    @NotNull(message = "房间状态不能为空")
-    @Schema(description = "状态: 10-正常(未满) 20-正常(满员) 30-保留(占用) 40-维修(停用) 41-装修(停用) 42-损坏(停用)")
+    @Schema(description = "用途: 0-学生, 1-教工")
+    private Integer usageType;
+    
+    /**
+     * 🚦 生命周期 (Lifecycle):
+     * 20: 正常使用, 50: 故障维修, 80: 行政预留(不分配)
+     */
+    @Schema(description = "生命周期: 20正常, 50维修, 80预留")
     private Integer status;
+    
+    /**
+     * 📊 资源饱和度码 (Resource Status):
+     * 21: 空闲, 23: 未满员, 24: 资源充裕, 25: 资源紧张, 26: 已满员
+     */
+    @TableField("resource_status")
+    @Schema(description = "饱和度状态码")
+    private Integer resStatus;
+    
+    /**
+     * 安全等级 (1-安全, 2-警告, 3-危险)
+     * 对应数据库新增的 safety_level 字段
+     */
+    @TableField("safety_level") // 显式指定数据库列名
+    private Integer safetyLevel;
     
     @Version
     private Integer version;
     
-    @TableLogic
-    private String delFlag;
 }

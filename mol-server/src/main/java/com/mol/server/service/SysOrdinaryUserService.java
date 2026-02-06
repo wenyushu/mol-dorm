@@ -11,10 +11,18 @@ import java.io.InputStream;
  */
 public interface SysOrdinaryUserService extends IService<SysOrdinaryUser> {
     
+    
     /**
      * 保存用户 (包含密码加密、身份证解析)
      */
     boolean saveUser(SysOrdinaryUser user);
+    
+    /**
+     * 获取用户详情（含动态脱敏逻辑）
+     * @param targetUserId 被查看者ID
+     * @return 经过权限处理的用户对象
+     */
+    SysOrdinaryUser getUserDetail(Long targetUserId);
     
     /**
      * 修改用户信息

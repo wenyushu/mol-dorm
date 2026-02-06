@@ -6,6 +6,8 @@ import com.mol.common.core.exception.ServiceException;
 import com.mol.dorm.biz.entity.UserPreference;
 import com.mol.dorm.biz.mapper.UserPreferenceMapper;
 import com.mol.dorm.biz.service.UserPreferenceService;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,131 +15,111 @@ import java.util.Arrays;
 import java.util.List;
 
 /**
- * 用户画像业务实现类
- * <p>
- * 集成了严格的数据校验逻辑，防止学生填写无效或矛盾的数据影响分配算法的准确性。
- * </p>
+ * 用户画像业务实现类 - 最终终极加固版
  */
+@Slf4j
 @Service
+@RequiredArgsConstructor
 public class UserPreferenceServiceImpl extends ServiceImpl<UserPreferenceMapper, UserPreference> implements UserPreferenceService {
     
-    // MBTI 16种类型白名单
+    private final UserPreferenceMapper preferenceMapper;
+    
     private static final List<String> VALID_MBTI = Arrays.asList(
-            "INTJ", "INTP", "ENTJ", "ENTP",
-            "INFJ", "INFP", "ENFJ", "ENFP",
-            "ISTJ", "ISFJ", "ESTJ", "ESFJ",
-            "ISTP", "ISFP", "ESTP", "ESFP"
+            "INTJ", "INTP", "ENTJ", "ENTP", "INFJ", "INFP", "ENFJ", "ENFP",
+            "ISTJ", "ISFJ", "ESTJ", "ESFJ", "ISTP", "ISFP", "ESTP", "ESFP"
     );
     
     @Override
     @Transactional(rollbackFor = Exception.class)
     public void saveOrUpdatePreference(UserPreference pref) {
-        // 1. 数据清洗与防刁民校验
-        validateAndClean(pref);
+        validateAndAudit(pref);
         
-        // 2. 检查数据库中是否已存在该用户的记录
-        // 注意：这里用 getById 是因为 userId 设置了 @TableId(type = IdType.INPUT)
-        UserPreference existing = this.getById(pref.getUserId());
-        
-        if (existing == null) {
-            // 新增
-            this.save(pref);
-        } else {
-            // 更新
-            // 强制保证 ID 不变
-            pref.setUserId(existing.getUserId());
-            this.updateById(pref);
+        if (StrUtil.isNotBlank(pref.getMbtiResult())) {
+            pref.setMbtiEI(pref.getMbtiResult().substring(0, 1));
         }
+        
+        pref.setProfileStatus(1);
+        
+        // 🛡️ [优化点]：利用 MyBatis-Plus 的 saveOrUpdate 简化代码
+        this.saveOrUpdate(pref);
     }
     
     /**
-     * 核心校验方法：防止离谱数据
+     * 🟢 核心修正：将参数 String gender 改为 Integer gender
+     * 这样就完美实现了 UserPreferenceService 接口中的 abstract 方法
      */
-    private void validateAndClean(UserPreference p) {
-        if (p.getUserId() == null) {
-            throw new ServiceException("用户 ID 不能为空");
+    @Override
+    public List<UserPreference> getFullProfilesForAllocation(Long campusId, Integer gender) {
+        // 调用 Mapper，此时 Mapper 接口也应该是接收 Integer gender
+        return preferenceMapper.selectFullProfileForAllocation(campusId, gender);
+    }
+    
+    /**
+     * 🛡️ 核心审计方法：逻辑悖论与数据完整性检查
+     */
+    private void validateAndAudit(UserPreference p) {
+        if (p.getUserId() == null) throw new ServiceException("用户 ID 不能为空");
+        
+        // --- A. 数值越界校验 ---
+        checkRange(p.getBedTime(), 1, 6, "就寝时间");
+        checkRange(p.getWakeTime(), 1, 6, "起床时间");
+        checkRange(p.getSleepQuality(), 1, 4, "睡眠质量");
+        checkRange(p.getSnoringLevel(), 0, 3, "打呼噜等级");
+        checkRange(p.getPersonalHygiene(), 1, 5, "卫生自评");
+        checkRange(p.getOdorTolerance(), 1, 3, "异味容忍度");
+        checkRange(p.getGameHabit(), 0, 2, "游戏习惯");
+        checkRange(p.getKeyboardAxis(), 1, 3, "键盘轴体");
+        
+        if (p.getAcTemp() != null && (p.getAcTemp() < 16 || p.getAcTemp() > 30)) {
+            throw new ServiceException("空调温度超出 16-30 度生理舒适区间！");
         }
         
-        // ==========================================
-        // 1. 基础范围校验 (防止数值越界/恶意修改报文)
-        // ==========================================
-        
-        // 作息 (1-6)
-        checkRange(p.getBedTime(), 1, 6, "就寝时间选项无效");
-        checkRange(p.getWakeTime(), 1, 6, "起床时间选项无效");
-        
-        // 睡眠质量 (1-4)
-        // 防止刁民填 100 分
-        checkRange(p.getSleepQuality(), 1, 4, "睡眠质量只能选1-4");
-        
-        // 呼噜等级 (0-3)
-        checkRange(p.getSnoringLevel(), 0, 3, "打呼噜等级只能选0-3");
-        
-        // 个人卫生 (1-5)
-        checkRange(p.getPersonalHygiene(), 1, 5, "个人卫生自评只能选1-5分");
-        
-        // 空调温度 (16-30)
-        // 防止刁民填 -100 度或者 1000 度
-        if (p.getAcTemp() != null) {
-            if (p.getAcTemp() < 16 || p.getAcTemp() > 30) {
-                throw new ServiceException("空调温度设置不合理，请设置在 16-30 度之间");
-            }
-        }
-        
-        // ==========================================
-        // 2. 逻辑一致性校验 (防止自相矛盾)
-        // ==========================================
-        
-        // 【卫生悖论】：自评卫生满分(5分)，但打扫频率却是"随缘"(4)
+        // --- B. 逻辑一致性悖论审计 (核心防御) ---
         if (isVal(p.getPersonalHygiene(), 5) && isVal(p.getCleanFreq(), 4)) {
-            throw new ServiceException("检测到逻辑矛盾：您自评'重度洁癖'，但打扫频率却是'随缘'？请诚实填写以确保分配准确！");
+            throw new ServiceException("检测到逻辑矛盾：您自评'重度洁癖'，但打扫频率却是'随缘'？请诚实填写！");
         }
         
-        // 【吸烟悖论】：要在室内抽烟(2)，却无法忍受烟味(0)
+        boolean hasOdorHabit = isVal(p.getEatLuosifen(), 2) || isVal(p.getEatDurian(), 2);
+        if (hasOdorHabit && isVal(p.getOdorTolerance(), 1)) {
+            throw new ServiceException("生活习惯冲突：您爱吃螺蛳粉/榴莲，但无法容忍异味？室友将无法与您相处。");
+        }
+        
         if (isVal(p.getSmoking(), 2) && isVal(p.getSmokeTolerance(), 0)) {
-            throw new ServiceException("检测到逻辑矛盾：您选择在室内抽烟，却无法忍受烟味？这将导致无法为您匹配室友。");
+            throw new ServiceException("逻辑崩塌：您要在室内抽烟，却拒绝烟味？请重新评估您的忍受度。");
         }
         
-        // 【作息悖论】：凌晨2点后睡(6)，却要在早上6点起(1)，且不午睡(0)
-        // 虽然有这种超人，但为了身体健康和数据准确性，给予警告
-        if (isVal(p.getBedTime(), 6) && isVal(p.getWakeTime(), 1) && isVal(p.getSiestaHabit(), 0)) {
-            // 这里可以抛异常，也可以只在日志记录。为了防乱填，我们选择抛异常提示。
-            throw new ServiceException("您的作息时间设置过于极端（睡4小时且不午休），请确认是否填写有误。");
+        if (isVal(p.getGameHabit(), 0) && isVal(p.getKeyboardAxis(), 3)) {
+            throw new ServiceException("键盘选择异常：不玩游戏却选用了干扰性极强的青轴键盘？");
         }
         
-        // ==========================================
-        // 3. 格式化清洗
-        // ==========================================
+        if (isVal(p.getSocialBattery(), 1) && p.getBringGuest() != null && p.getBringGuest() >= 2) {
+            throw new ServiceException("社交模式矛盾：深度社恐通常不希望频繁有访客。");
+        }
         
-        // MBTI 清洗：转大写，去空格
+        if (isVal(p.getSnoringLevel(), 3) && isVal(p.getSleepQuality(), 4)) {
+            throw new ServiceException("分配预警：您打呼噜严重且睡眠极度敏感，建议申请特殊单间。");
+        }
+        
+        // --- C. 数据清洗与标准化 ---
         if (StrUtil.isNotBlank(p.getMbtiResult())) {
             String mbti = p.getMbtiResult().trim().toUpperCase();
             if (!VALID_MBTI.contains(mbti)) {
-                throw new ServiceException("MBTI类型无效，请输入标准的4位字母(如 INTJ, ENFP)");
+                throw new ServiceException("MBTI 类型无效：[" + mbti + "] 必须是标准的 16 种类型之一。");
             }
             p.setMbtiResult(mbti);
         }
         
-        // 组队码清洗
-        if (StrUtil.isNotBlank(p.getTeamCode())) {
+        if (p.getTeamCode() != null) {
             p.setTeamCode(p.getTeamCode().trim());
         }
     }
     
-    /**
-     * 辅助方法：检查数值范围
-     */
-    private void checkRange(Integer val, int min, int max, String errorMsg) {
-        if (val != null) {
-            if (val < min || val > max) {
-                throw new ServiceException(errorMsg + " (非法值:" + val + ")");
-            }
+    private void checkRange(Integer val, int min, int max, String fieldName) {
+        if (val != null && (val < min || val > max)) {
+            throw new ServiceException(fieldName + "选项越界（应在" + min + "-" + max + "之间）");
         }
     }
     
-    /**
-     * 辅助方法：判断 Integer 是否等于某个值 (处理 null 安全)
-     */
     private boolean isVal(Integer val, int target) {
         return val != null && val == target;
     }

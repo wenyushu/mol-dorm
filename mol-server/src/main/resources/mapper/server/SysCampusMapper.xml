@@ -1,17 +1,36 @@
-<?xml version="1.0" encoding="UTF-8"?>
+<?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-
 <mapper namespace="com.mol.server.mapper.SysCampusMapper">
-    <resultMap id="BaseResultMap" type="com.mol.server.entity.SysCampus">
-        <id column="id" property="id" />
-        <result column="campus_name" property="campusName" />
-        <result column="campus_code" property="campusCode" />
-        <result column="address" property="address" />
-        <result column="status" property="status" />
-        <result column="create_by" property="createBy" />
-        <result column="create_time" property="createTime" />
-        <result column="update_by" property="updateBy" />
-        <result column="update_time" property="updateTime" />
-        <result column="del_flag" property="delFlag" />
+
+    <resultMap id="CampusTreeResultMap" type="com.mol.server.vo.SysCampusTreeVO">
+        <id property="id" column="campus_id" />
+        <result property="campusName" column="campus_name" />
+        <result property="status" column="campus_status" />
+
+        <collection property="buildings" ofType="com.mol.server.vo.SysCampusTreeVO$BuildingItemVO">
+            <id property="id" column="building_id" />
+            <result property="name" column="building_name" />
+            <result property="usageType" column="usage_type" />
+            <result property="status" column="building_status" />
+        </collection>
     </resultMap>
+
+    <select id="selectCampusBuildingTree" resultMap="CampusTreeResultMap">
+        SELECT
+        c.id AS campus_id,
+        c.campus_name,
+        c.status AS campus_status,
+        b.id AS building_id,
+        b.building_name,
+        b.usage_type,
+        b.status AS building_status
+        FROM sys_campus c
+        LEFT JOIN biz_dorm_building b ON c.id = b.campus_id AND b.del_flag = '0'
+        WHERE c.del_flag = '0'
+        <if test="status != null">
+            AND c.status = #{status}
+        </if>
+        ORDER BY c.id ASC, b.id ASC
+    </select>
+
 </mapper>

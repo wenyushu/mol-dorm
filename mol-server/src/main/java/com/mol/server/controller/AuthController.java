@@ -33,6 +33,7 @@ public class AuthController {
         return R.ok(vo);
     }
     
+    
     @Operation(summary = "退出登录")
     @SaCheckLogin // 🟢 确保只有登录状态下才能调用退出，避免无意义的报错
     @PostMapping("/logout")
@@ -71,11 +72,13 @@ public class AuthController {
         return R.ok("您已通过二级认证，成功删库跑路！(误)");
     }
     
+    
     @Operation(summary = "检查是否处于二级认证有效期内")
     @GetMapping("/is-safe")
     public R<Boolean> isSafe() {
         return R.ok(StpUtil.isSafe());
     }
+    
     
     @Operation(summary = "【测试】后端接收的 token")
     @GetMapping("/debug/header")

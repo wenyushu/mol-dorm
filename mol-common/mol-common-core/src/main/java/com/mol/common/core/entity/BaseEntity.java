@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableLogic;
 import com.fasterxml.jackson.annotation.JsonFormat;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
+import lombok.experimental.Accessors;
 
 import java.io.Serial;
 import java.io.Serializable;
@@ -15,12 +16,12 @@ import java.time.LocalDateTime;
  * 实体通用父类 (审计字段)
  * <p>
  * 包含: 创建/更新时间、创建/更新人、逻辑删除、备注
- * JDK 17 兼容
  * </p>
  *
  * @author mol
  */
 @Data
+@Accessors(chain = true) // ✨ 让父类的所有 Setter 也支持链式返回
 public class BaseEntity implements Serializable {
     
     @Serial

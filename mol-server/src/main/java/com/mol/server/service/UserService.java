@@ -2,27 +2,33 @@ package com.mol.server.service;
 
 import com.mol.server.dto.AdminUpdateStudentBody;
 import com.mol.server.dto.UpdatePasswordBody;
-import com.mol.server.dto.UserProfileBody;
+import com.mol.server.dto.UserProfileEditDTO;
+
+import java.util.Map;
 
 /**
  * 用户业务接口
  * 负责处理：个人中心、学生管理等非登录类业务
  */
 public interface UserService {
-    
     /**
-     * 场景A: 个人修改资料 (昵称、头像、手机)
-     * 🚫 严禁在此处修改 学号、姓名、性别
+     * 获取个人资料 (包含自动脱敏逻辑)
      */
-    void updateProfile(UserProfileBody body);
+    Map<String, Object> getProfile();
     
     /**
-     * 场景B: 修改密码
+     * 自行修改资料 (仅限非核心字段)
+     */
+    void updateProfile(UserProfileEditDTO body);
+    
+    /**
+     * 自行修改密码 (含旧密码校验与强制登出)
      */
     void updatePassword(UpdatePasswordBody body);
     
     /**
-     * 场景C: 管理员修改学生档案 (转专业、修正性别、封号)
+     * 管理员特权：修改学生核心学籍及校外地址强制备案
+     * 🛡️ 防刁民：此接口应在 Controller 层加 @SaCheckRole
      */
     void updateStudentByAdmin(AdminUpdateStudentBody body);
 }

@@ -132,4 +132,22 @@ public class R<T> implements Serializable {
         apiResult.setMsg(msg);
         return apiResult;
     }
+    
+    /* ========================== 新增静态方法 ========================== */
+    
+    /**
+     * 成功返回 (仅自定义消息，不带数据体)
+     * 解决 R.ok("操作成功") 导致数据体被填充为字符串的问题
+     */
+    public static <T> R<T> okMsg(String msg) {
+        return restResult(null, CommonConstants.SUCCESS, msg);
+    }
+    
+    /**
+     * 失败返回 (仅自定义消息)
+     * 语义更清晰
+     */
+    public static <T> R<T> failMsg(String msg) {
+        return restResult(null, CommonConstants.FAIL, msg);
+    }
 }

@@ -1,12 +1,14 @@
 package com.mol.dorm.biz.entity;
 
 import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableField;
 import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import com.mol.common.core.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 import java.io.Serial;
 
@@ -20,6 +22,7 @@ import java.io.Serial;
  * @author mol
  */
 @Data
+@Accessors(chain = true)
 @EqualsAndHashCode(callSuper = true)
 @TableName("biz_user_preference")
 @Schema(description = "用户画像/生活习惯偏好")
@@ -33,7 +36,7 @@ public class UserPreference extends BaseEntity {
      * 注意：这里不能用 AUTO，必须是 INPUT，因为它是跟 sys_ordinary_user 的 ID 一一对应的
      */
     @TableId(type = IdType.INPUT)
-    @Schema(description = "用户ID (关联学生表)")
+    @Schema(description = "用户 ID (关联学生表)")
     private Long userId;
     
     @Schema(description = "组队码 (拥有相同组队码的学生将被强制分配到同一宿舍)")
@@ -128,10 +131,10 @@ public class UserPreference extends BaseEntity {
     @Schema(description = "玩LOL/DOTA: 0-否 1-是")
     private Integer gameTypeLol;
     
-    @Schema(description = "玩FPS(CS/瓦/三角洲): 0-否 1-是")
+    @Schema(description = "玩 FPS(CS/瓦/三角洲): 0-否 1-是")
     private Integer gameTypeFps;
     
-    @Schema(description = "玩3A大作: 0-否 1-是")
+    @Schema(description = "玩 3A 大作: 0-否 1-是")
     private Integer gameType3a;
     
     @Schema(description = "玩MMO(剑三/魔兽): 0-否 1-是")
@@ -222,4 +225,62 @@ public class UserPreference extends BaseEntity {
     // ==========================================
     @Schema(description = "南北方: 0-南方, 1-北方 (根据籍贯自动计算)")
     private Integer regionType;
+    
+    // ==========================================
+    // 11. 环境与空气 (Environment)
+    // ==========================================
+    @Schema(description = "遮光帘依赖: 0-不用, 1-必装(算法尽量匹配同好)")
+    private Integer useBlackoutCurtain;
+    
+    @Schema(description = "通风习惯: 0-怕冷常关窗, 1-常开窗通风")
+    private Integer ventilationHabit;
+    
+    @Schema(description = "光线敏感度: 1-全黑才能睡, 2-普通, 3-开着灯也能睡")
+    private Integer lightSensitivity;
+    
+    // ==========================================
+    // 12. 财务与消费 (Financial - 隐性权重)
+    // ==========================================
+    @Schema(description = "电费承受力: 1-极致省电, 2-普通, 3-空调自由(不在乎电费)")
+    private Integer electricityBudget;
+    
+    // ==========================================
+    // 13. 系统状态 (System Internal)
+    // ==========================================
+    @Schema(description = "画像完成度: 0-未完成, 1-已完成(未完成不参与智能匹配)")
+    private Integer profileStatus;
+    
+    @Schema(description = "匹配锁定: 0-开放匹配, 1-锁定(一键分配不可改动此人)")
+    private Integer matchLocked;
+    
+    // ==========================================
+    // 14. 算法辅助字段 (非数据库持久化字段)
+    // ==========================================
+    @TableField(exist = false)
+    @Schema(description = "关联：真实姓名")
+    private String realName;
+    
+    @TableField(exist = false)
+    @Schema(description = "关联：性别 (0女 1男)")
+    private Integer gender;
+    
+    @TableField(exist = false)
+    @Schema(description = "关联：民族")
+    private String ethnicity;
+    
+    @TableField(exist = false)
+    @Schema(description = "关联：专业ID")
+    private Long majorId;
+    
+    @TableField(exist = false)
+    @Schema(description = "关联：班级ID")
+    private Long classId;
+    
+    @TableField(exist = false)
+    @Schema(description = "关联：学院ID")
+    private Long collegeId;
+    
+    @TableField(exist = false)
+    @Schema(description = "关联：教工职级 (1-10)")
+    private Integer jobTitleLevel;
 }

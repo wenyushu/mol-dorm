@@ -2,4 +2,51 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.mol.dorm.biz.mapper.DormBuildingMapper">
 
+    <resultMap id="BaseResultMap" type="com.mol.dorm.biz.entity.DormBuilding">
+        <id column="id" property="id" />
+        <result column="campus_id" property="campusId" />
+        <result column="building_name" property="buildingName" />
+        <result column="building_no" property="buildingNo" />
+        <result column="floor_count" property="floorCount" />
+        <result column="usage_type" property="usageType" />
+        <result column="gender_limit" property="genderLimit" />
+        <result column="status" property="status" />
+        <result column="location" property="location" />
+        <result column="version" property="version" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+    <select id="selectBuildingStats" resultType="java.util.Map">
+        SELECT
+            usage_type AS usageType,
+            COUNT(id) AS totalBuildings,
+            /* 🛡️ 防止 SUM 结果为 NULL 导致后端报错 */
+            CAST(IFNULL(SUM(CASE WHEN status = 20 THEN 1 ELSE 0 END), 0) AS SIGNED) AS activeBuildings
+        FROM dorm_building
+        WHERE campus_id = #{campusId} AND del_flag = '0'
+        GROUP BY usage_type
+    </select>
+
+    <select id="selectRealOccupancyByCampus" resultType="java.util.Map">
+        SELECT
+            room_id AS roomId,
+            COUNT(occupant_id) AS realCount
+        FROM dorm_bed
+        WHERE campus_id = #{campusId}
+          AND occupant_id IS NOT NULL
+          AND del_flag = '0'
+        GROUP BY room_id
+    </select>
+
+    <select id="selectRealOccupancyByBuilding" resultType="java.util.Map">
+        SELECT
+            room_id AS roomId,
+            COUNT(occupant_id) AS realCount
+        FROM dorm_bed
+        WHERE building_id = #{buildingId}
+          AND occupant_id IS NOT NULL
+          AND del_flag = '0'
+        GROUP BY room_id
+    </select>
+
 </mapper>

@@ -4,23 +4,39 @@ import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import com.mol.dorm.biz.entity.DormBed;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
-import org.apache.ibatis.annotations.Update;
+import org.apache.ibatis.annotations.Select;
+
+import java.util.List;
 
 /**
- * 宿舍床位 Mapper 接口
+ * 床位 Mapper 接口
+ * 🛡️ [防刁民]：实现全校范围内的“一人一床”与“毕业清算”审计
  */
 @Mapper
 public interface DormBedMapper extends BaseMapper<DormBed> {
     
     /**
-     * CAS (Compare-And-Swap) 乐观锁更新床位
-     * 核心逻辑：只有当 occupant_id 为 NULL (即当前为空闲) 时，才执行更新。
-     * 这能有效防止两个管理员同时把两个人分配到同一个床位的并发问题。
-     *
-     * @param bedId  床位主键 ID
-     * @param userId 入住用户 ID
-     * @return 受影响行数 (1表示成功抢到，0表示已被别人抢先占用或床位不存在)
+     * [物理审计] 统计房间内真实在住人数
+     * 🛡️ 绕过冗余字段，直接查 occupant_id 的物理计数
      */
-    @Update("UPDATE dorm_bed SET occupant_id = #{userId} WHERE id = #{bedId} AND occupant_id IS NULL")
-    int assignBed(@Param("bedId") Long bedId, @Param("userId") Long userId);
+    Integer countRealOccupants(@Param("roomId") Long roomId);
+    
+    /**
+     * [毕业季脚本] 根据入学年级找床位
+     * 用于一键清退，防止毕业学生继续占用床位
+     */
+    List<Long> selectBedIdsByGraduateGrade(@Param("grade") Integer grade);
+    
+    /**
+     * 查询房间内可分配的“净空”床位
+     */
+    List<DormBed> findEmptyBedsInRoom(@Param("roomId") Long roomId);
+    
+    /**
+     * [防刁民审计]：全校范围扫描用户是否已占用床位
+     * @param userId 用户ID
+     * @return 冲突的床位ID，若无则返回 null
+     */
+    @Select("SELECT id FROM dorm_bed WHERE occupant_id = #{userId} AND del_flag = '0' LIMIT 1")
+    Long checkUserHasBed(@Param("userId") Long userId);
 }

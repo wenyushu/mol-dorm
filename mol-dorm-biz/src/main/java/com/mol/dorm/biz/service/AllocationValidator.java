@@ -3,7 +3,6 @@ package com.mol.dorm.biz.service;
 import cn.hutool.core.collection.CollUtil;
 import cn.hutool.core.util.NumberUtil;
 import cn.hutool.core.util.StrUtil;
-import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.core.toolkit.Wrappers;
 import com.mol.common.core.entity.SysOrdinaryUser;
 import com.mol.dorm.biz.entity.DormBed;

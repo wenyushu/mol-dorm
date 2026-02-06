@@ -2,4 +2,20 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.mol.dorm.biz.mapper.UtilityBillMapper">
 
+    <select id="calculateRoomBill" resultType="com.mol.dorm.biz.entity.UtilityBill">
+        SELECT
+            r.id as roomId,
+            #{month} as month,
+            #{waterCold} as waterCold,
+            #{waterHot} as waterHot,
+            #{electricUsage} as electricUsage,
+            (#{waterCold} * c.price_water_cold) as costWaterCold,
+            (#{waterHot} * c.price_water_hot) as costWaterHot,
+            (#{electricUsage} * c.price_electric) as costElectric,
+            ((#{waterCold} * c.price_water_cold) + (#{waterHot} * c.price_water_hot) + (#{electricUsage} * c.price_electric)) as totalAmount
+        FROM dorm_room r
+            INNER JOIN sys_campus c ON r.campus_id = c.id
+        WHERE r.id = #{roomId}
+    </select>
+
 </mapper>

@@ -1,5 +1,7 @@
 package com.mol.common.core.entity;
 
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
@@ -23,6 +25,10 @@ public class SysUserRole implements Serializable {
     
     @Serial
     private static final long serialVersionUID = 1L;
+    
+    // 加上这个注解，消除 WARN 警告
+    @TableId(type = IdType.AUTO)
+    private Long id;
     
     @Schema(description = "用户 ID")
     private Long userId;

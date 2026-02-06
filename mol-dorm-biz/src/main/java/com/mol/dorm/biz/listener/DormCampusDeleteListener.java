@@ -4,7 +4,7 @@ import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.mol.common.core.exception.ServiceException;
 import com.mol.dorm.biz.entity.DormBuilding;
 import com.mol.dorm.biz.mapper.DormBuildingMapper;
-import com.mol.server.event.CampusDeleteEvent; // 依赖 server 模块的事件
+import com.mol.server.event.CampusDeleteEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;

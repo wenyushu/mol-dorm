@@ -9,36 +9,37 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
 
-/**
- * 班级 Mapper 接口
- * 对应表：sys_class
- */
 @Mapper
 public interface SysClassMapper extends BaseMapper<SysClass> {
+    
     /**
-     * 自定义分页查询：关联查询 学院表 和 专业表
-     * <p>
-     * 这里的 SQL 逻辑是：
-     * 1. 主查 sys_class (c)
-     * 2. 关联 sys_major (m) 拿到专业名和层次
-     * 3. 关联 sys_college (col) 拿到学院名
-     * </p>
+     * 修正说明：
+     * 1. 使用 <script> 标签开启动态 SQL 模式。
+     * 2. 使用 <if> 判断 wrapper 是否有查询条件 (!ew.emptyOfWhere)。
+     * 3. 使用 ${ew.sqlSegment} 只获取条件部分 (例如: id = ?)，而不包含 WHERE 或 ORDER BY 关键字。
+     * 4. 排序逻辑固定在最后，或者由 Page 对象控制，忽略 Wrapper 里的排序。
+     * 5. 直接取班级表自己的 education_level
      */
     @Select("""
+        <script>
         SELECT
             c.*,
+            -- ✨ 这里改了：优先用班级表自己的 education_level
+            c.education_level AS edu_level,
             m.name AS major_name,
-            m.level AS edu_level,
             col.name AS college_name
-        FROM sys_class c
+        FROM biz_class c
         LEFT JOIN sys_major m ON c.major_id = m.id
         LEFT JOIN sys_college col ON m.college_id = col.id
         WHERE c.del_flag = '0'
-        AND (${ew.customSqlSegment})
-        ORDER BY c.grade DESC, c.name ASC
+        
+        <if test="ew != null and !ew.emptyOfWhere">
+            AND ${ew.sqlSegment}
+        </if>
+        
+        ORDER BY c.grade DESC, c.class_name ASC
+        </script>
     """)
-    
-    // 自定义分页查询
     IPage<SysClassVO> selectClassVoPage(
             Page<SysClassVO> page,
             @Param("ew") com.baomidou.mybatisplus.core.conditions.Wrapper<SysClass> wrapper);

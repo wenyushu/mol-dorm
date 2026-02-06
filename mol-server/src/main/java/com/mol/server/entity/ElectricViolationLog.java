@@ -7,6 +7,7 @@ import com.mol.common.core.entity.BaseEntity;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.experimental.Accessors;
 
 import java.io.Serial;
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ import java.time.LocalDateTime;
  * 违规用电/安全警报日志
  */
 @Data
+@Accessors(chain = true) // ✨ 父类及子类支持链式返回
 @EqualsAndHashCode(callSuper = true)
 @TableName("biz_electric_violation_log")
 @Schema(description = "违规电器监测日志")

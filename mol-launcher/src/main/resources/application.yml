@@ -5,7 +5,7 @@ spring:
   application:
     name: mol-launcher
 
-  # 🟢 核心修复：显式导入子模块配置
+  # 核心修复：显式导入子模块配置
   # 这样 Launcher 启动时，就会加载 server 和 dorm 里的 MyBatis、Swagger 配置
   config:
     import:
