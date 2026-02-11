@@ -1,46 +1,44 @@
 package com.mol.dorm.biz.service;
 
+import com.baomidou.mybatisplus.core.metadata.IPage;
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.baomidou.mybatisplus.extension.service.IService;
 import com.mol.dorm.biz.entity.RepairOrder;
-
 import java.math.BigDecimal;
 
 /**
- * 报修工单服务接口
- * 🛡️ [防刁民逻辑矩阵]：
- * 1. 状态流转：待处理(0) -> 维修中(1) -> 已修复(2) -> 已评价(3) -> 已驳回(4)
- * 2. 物理联动：基于 AssetCode 实现报修即锁定资产，完工即释放资源。
- * 3. 熔断降级：重大故障自动下架房间分配权。
+ * 报修管理服务接口 - 工业级全周期闭环
  */
 public interface RepairOrderService extends IService<RepairOrder> {
     
-    /**
-     * 1. 提交报修申请
-     * [联动]：自动将关联资产设为 50(维修中)，并触发房间可用性评估。
-     */
+    // 1. 提交与自愈
     void submitRepair(RepairOrder order);
     
-    /**
-     * 2. 接单/开始维修
-     * [逻辑]：维修师傅确认工单，状态由待处理转为维修中。
-     */
+    // 2. 接单与分配
     void startRepair(Long orderId, Long repairmanId);
     
     /**
-     * 3. 完成维修并反馈
-     * @param isHumanDamage 是否判定为人为损坏 (决定是否触发自动扣费)
+     * 🟢 [新增] 师傅侧自动巡航引擎：系统自动寻找空闲师傅并指派
      */
+    void autoAllocate(Long orderId);
+    
+    // 3. 完工与财务
     void finishRepair(Long orderId, String comment, Integer rating, BigDecimal materialCost, Boolean isHumanDamage);
     
-    /**
-     * 4. 挂起工单 (转为待大修)
-     * [场景]：现场核实后发现需寒暑假施工或外协，状态转为 5。
-     */
+    // 4. 运维状态流转
     void suspendRepair(Long orderId, String reason);
     
-    /**
-     * 5. 驳回工单
-     * [场景]：信息错误或非报修范畴，状态转为 4。
-     */
     void rejectRepair(Long orderId, String reason);
+    
+    /**
+     * 🟢 [新增] 学生评价防伪入口
+     * @param userId 评价人ID (需校验身份)
+     */
+    void rateOrder(Long orderId, Integer rating, String comment, Long userId);
+    
+    /**
+     * 🟢 [新增] 角色感知分页查询
+     * 逻辑：学生看本人，师傅看名下，管理员看全区
+     */
+    IPage<RepairOrder> selectOrderPage(Page<RepairOrder> page, RepairOrder query, Long userId);
 }

@@ -2,4 +2,40 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.mol.server.mapper.SysOrdinaryUserMapper">
 
+    <resultMap id="SysOrdinaryUserMap" type="com.mol.common.core.entity.SysOrdinaryUser">
+        <id column="id" property="id" />
+        <result column="username" property="username" />
+        <result column="real_name" property="realName" />
+        <result column="dorm_id" property="dormId" />
+        <result column="major_id" property="majorId" />
+        <result column="status" property="status" />
+        <result column="campus_status" property="campusStatus" /> <result column="enrollment_year" property="enrollmentYear" />
+        <result column="contract_year" property="contractYear" /> <result column="suspension_years" property="suspensionYears" />
+        <result column="retained_years" property="retainedYears" />
+        <result column="del_flag" property="delFlag" />
+    </resultMap>
+
+    <select id="selectOverdueStudents" resultMap="SysOrdinaryUserMap">
+        SELECT
+            u.*
+        FROM sys_ordinary_user u
+                 LEFT JOIN sys_major m ON u.major_id = m.id
+        WHERE u.status = '0'                -- 账号必须是活跃在校
+          AND u.del_flag = '0'                -- 未删除
+          AND u.user_category = 0             -- 身份必须是学生
+          AND u.campus_status = 0             -- ✨ 核心：必须是正常在校状态（排除当兵、留级待定等）
+
+          -- 🛡️ 增强版核心算法：
+          -- 预计毕业年 = 入学年份 + 学制(优先取用户表 contract_year) + 累计休学年 + 累计留级年
+          AND (
+                  u.enrollment_year +
+                  COALESCE(u.contract_year, m.duration, 0) +
+                  IFNULL(u.suspension_years, 0) +
+                  IFNULL(u.retained_years, 0)
+                  ) &lt;= #{currentYear}
+
+          -- 🛡️ 可选：只有还在住的人才需要被清算（释放床位），如果已经退宿了，由其他归档逻辑处理
+          AND u.dorm_id IS NOT NULL
+    </select>
+
 </mapper>

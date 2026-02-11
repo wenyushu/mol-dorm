@@ -66,7 +66,7 @@ public class SmartAllocationController {
     public R<String> terminateByGrade(
             @Parameter(description = "入学年份(如2022)", required = true) @RequestParam Integer graduateYear) {
         
-        // 🟢 修改点：对齐 Service 返回值，返回处理人数
+        // 对齐 Service 返回值，返回处理人数
         int count = workflowService.batchGraduate(graduateYear);
         
         if (count == 0) {

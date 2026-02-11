@@ -56,4 +56,17 @@ public interface SysOrdinaryUserService extends IService<SysOrdinaryUser> {
      * @param queryParams 文件输出流
      */
     void exportData(HttpServletResponse response, SysOrdinaryUser queryParams);
+    
+    /**
+     * 从档案库一键恢复用户
+     */
+    void restoreFromArchive(Long userId);
+    
+    /**
+     * 手动标记特殊学籍状态
+     * @param userId 用户ID
+     * @param status 2-休学, 4-留级/延毕
+     * @param years 变动年数
+     */
+    void markSpecialStatus(Long userId, Integer status, Integer years);
 }

@@ -9,46 +9,45 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * 报修工单持久层 - 财务资产联动 & 高并发优化版
- * 🛡️ [设计规范]：
- * 1. 原子操作：利用 SQL 状态机实现接单。
- * 2. 穿透统计：跨表聚合房间、建筑、用户及财务流水数据。
+ * 报修工单持久层 - 数字化运维核心
  */
 @Mapper
 public interface RepairOrderMapper extends BaseMapper<RepairOrder> {
     
     /**
      * 🛡️ [防重复报修校验]
-     * 判定同一资产是否已在“待指派、维修中、挂起”这三个生命周期内。
      */
     Long checkAssetUnderRepair(@Param("assetCode") String assetCode);
     
     /**
-     * 📊 [大屏看板]：报修大户楼栋排行 (按单量)
+     * 🤖 [自动调度算法核心]：查找负载最低的师傅
+     * 逻辑：筛选拥有“维修师傅”角色的账户，统计其“处理中(1)”和“挂起(5)”的单量，按单量升序排列。
+     * @return 师傅ID列表（首位即是最闲师傅）
+     */
+    List<Long> selectRepairmanByTaskCount();
+    
+    /**
+     * ⚡ [高并发原子抢单核心]
+     */
+    int takeOrder(@Param("orderId") Long orderId, @Param("repairmanId") Long repairmanId);
+    
+    /**
+     * 📊 [大屏看板]：报修排行
      */
     List<Map<String, Object>> selectTopRepairBuildings(@Param("limit") Integer limit);
     
     /**
-     * 🚨 [时效催办]：查询超过 24 小时未指派的工单
+     * 🚨 [时效预警]：查询 24h 未响应工单
      */
     List<RepairOrder> selectUrgentOrders();
     
     /**
-     * 👤 [工效统计]：统计维修工的结案总数与平均评分
+     * 👤 [工效统计]：统计结案数与评分
      */
     Map<String, Object> selectRepairmanStats(@Param("repairmanId") Long repairmanId);
     
     /**
-     * 🧩 [全要素穿透查询]：获取工单详情 (联动建筑、房间、用户、资产、财务流水)
+     * 🧩 [穿透详情查询]
      */
     Map<String, Object> selectOrderWithDetail(@Param("orderId") Long orderId);
-    
-    /**
-     * ⚡ [高并发原子抢单核心]
-     * 🛡️ 为什么不先 Select 后 Update？
-     * 在高并发点击时，Select 到 Status=0 的线程可能有多个。
-     * 直接使用 UPDATE ... WHERE status = 0 可以在数据库行锁层面确保“只有一个师傅能赢”。
-     * * @return 返回 1 表示抢单成功；返回 0 表示已被别人抢走或工单已失效。
-     */
-    int takeOrder(@Param("orderId") Long orderId, @Param("repairmanId") Long repairmanId);
 }

@@ -27,7 +27,7 @@ import java.util.List;
 public class CampusStatusService {
     
     private final SysOrdinaryUserMapper ordinaryUserMapper;
-    // 🟢 1. 引入管理员 Mapper
+    // 1. 引入管理员 Mapper
     private final SysAdminUserMapper adminUserMapper;
     
     /**

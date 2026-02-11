@@ -9,82 +9,22 @@
         <result column="asset_code" property="assetCode" />
         <result column="applicant_id" property="applicantId" />
         <result column="description" property="description" />
-        <result column="images" property="images" />
         <result column="status" property="status" />
         <result column="repairman_id" property="repairmanId" />
-        <result column="repairman_name" property="repairmanName" />
-        <result column="repairman_phone" property="repairmanPhone" />
-        <result column="assign_time" property="assignTime" />
-        <result column="finish_time" property="finishTime" />
-        <result column="rating" property="rating" />
-        <result column="comment" property="comment" />
-        <result column="remark" property="remark" />
         <result column="create_time" property="createTime" />
-        <result column="update_time" property="updateTime" />
         <result column="del_flag" property="delFlag" />
     </resultMap>
 
-    <select id="selectTopRepairBuildings" resultType="java.util.Map">
-        SELECT
-            b.building_name AS buildingName,
-            COUNT(r.id) AS repairCount
-        FROM biz_repair_order r
-                 INNER JOIN dorm_room rm ON r.room_id = rm.id
-                 INNER JOIN dorm_building b ON rm.building_id = b.id
-        WHERE r.del_flag = '0'
-          AND b.del_flag = '0'
-          AND r.status != 3 -- 屏蔽已评价归档的单据
-        GROUP BY b.id
-        ORDER BY repairCount DESC
-            LIMIT #{limit}
-    </select>
-
-    <select id="selectUrgentOrders" resultMap="BaseResultMap">
-        SELECT * FROM biz_repair_order
-        WHERE status = 0
-          AND del_flag = '0'
-          AND create_time &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR)
-        ORDER BY create_time ASC
-    </select>
-
-    <select id="selectOrderWithDetail" resultType="java.util.Map">
-        SELECT
-            r.*,
-            b.building_name AS buildingName,
-            rm.room_no AS roomNo,
-            u.real_name AS applicantName,
-            u.phonenumber AS applicantPhone,
-            fa.asset_name AS assetName,
-            ABS(wt.amount) AS materialCost -- 💸 联动财务：穿透流水表获取维修耗材费
-        FROM biz_repair_order r
-                 LEFT JOIN dorm_room rm ON r.room_id = rm.id
-                 LEFT JOIN dorm_building b ON rm.building_id = b.id
-                 LEFT JOIN sys_ordinary_user u ON r.applicant_id = u.id
-                 LEFT JOIN dorm_fixed_asset fa ON r.asset_code = fa.asset_code
-                 LEFT JOIN biz_wallet_transaction wt ON r.order_no = wt.biz_no
-            AND wt.trx_type = 4 -- 4: 维修耗材类型
-        WHERE r.id = #{orderId}
-    </select>
-
-    <select id="checkAssetUnderRepair" resultType="java.lang.Long">
-        SELECT id FROM biz_repair_order
-        WHERE asset_code = #{assetCode}
-          AND status IN (0, 1, 5) -- 包含待指派、维修中、挂起大修
-          AND del_flag = '0'
-            LIMIT 1
-    </select>
-
-    <select id="selectRepairmanStats" resultType="java.util.Map">
-        SELECT
-            repairman_id AS repairmanId,
-            COUNT(id) AS totalSolved,       -- 累计结案单量
-            ROUND(AVG(rating), 2) AS avgRating, -- 平均服务得分
-            SUM(CASE WHEN status = 2 OR status = 3 THEN 1 ELSE 0 END) as finishedCount
-        FROM biz_repair_order
-        WHERE repairman_id = #{repairmanId}
-          AND del_flag = '0'
-          AND status IN (2, 3) -- 2:已修复, 3:已评价归档
-        GROUP BY repairman_id
+    <select id="selectRepairmanByTaskCount" resultType="java.lang.Long">
+        SELECT u.id
+        FROM sys_ordinary_user u
+        WHERE u.user_category = 1
+          AND u.status = '0'
+          AND u.del_flag = '0'
+        ORDER BY (
+                     SELECT COUNT(1) FROM biz_repair_order bro
+                     WHERE bro.repairman_id = u.id AND bro.status IN (1, 5)
+                 ) ASC, u.id ASC
     </select>
 
     <update id="takeOrder">
@@ -97,5 +37,53 @@
           AND status = 0
           AND del_flag = '0'
     </update>
+
+    <select id="checkAssetUnderRepair" resultType="java.lang.Long">
+        SELECT id FROM biz_repair_order
+        WHERE asset_code = #{assetCode}
+          AND status IN (0, 1, 5)
+          AND del_flag = '0'
+            LIMIT 1
+    </select>
+
+    <select id="selectTopRepairBuildings" resultType="java.util.Map">
+        SELECT b.building_name AS buildingName, COUNT(r.id) AS repairCount
+        FROM biz_repair_order r
+                 INNER JOIN dorm_room rm ON r.room_id = rm.id
+                 INNER JOIN dorm_building b ON rm.building_id = b.id
+        WHERE r.del_flag = '0' AND r.status != 3
+        GROUP BY b.id
+        ORDER BY repairCount DESC
+            LIMIT #{limit}
+    </select>
+
+    <select id="selectUrgentOrders" resultMap="BaseResultMap">
+        SELECT * FROM biz_repair_order
+        WHERE status = 0 AND del_flag = '0'
+          AND create_time &lt; DATE_SUB(NOW(), INTERVAL 24 HOUR)
+    </select>
+
+    <select id="selectRepairmanStats" resultType="java.util.Map">
+        SELECT
+            repairman_id AS repairmanId,
+            COUNT(id) AS totalSolved,
+            COALESCE(AVG(rating), 0) AS avgRating
+        FROM biz_repair_order
+        WHERE repairman_id = #{repairmanId} AND status IN (2, 3)
+        GROUP BY repairman_id
+    </select>
+
+    <select id="selectOrderWithDetail" resultType="java.util.Map">
+        SELECT
+            r.*,
+            rm.room_no AS roomNo,
+            u.real_name AS applicantName,
+            fa.asset_name AS assetName
+        FROM biz_repair_order r
+                 LEFT JOIN dorm_room rm ON r.room_id = rm.id
+                 LEFT JOIN sys_ordinary_user u ON r.applicant_id = u.id
+                 LEFT JOIN dorm_fixed_asset fa ON r.asset_code = fa.asset_code
+        WHERE r.id = #{orderId}
+    </select>
 
 </mapper>

@@ -13,18 +13,29 @@ import org.apache.ibatis.annotations.Select;
 public interface SysClassMapper extends BaseMapper<SysClass> {
     
     /**
-     * 修正说明：
-     * 1. 使用 <script> 标签开启动态 SQL 模式。
-     * 2. 使用 <if> 判断 wrapper 是否有查询条件 (!ew.emptyOfWhere)。
-     * 3. 使用 ${ew.sqlSegment} 只获取条件部分 (例如: id = ?)，而不包含 WHERE 或 ORDER BY 关键字。
-     * 4. 排序逻辑固定在最后，或者由 Page 对象控制，忽略 Wrapper 里的排序。
-     * 5. 直接取班级表自己的 education_level
+     * ✨ [新增] 单条班级视图查询
+     * 用于：导出 Excel 时实时翻译“班级ID -> 全称”
+     */
+    @Select("""
+        SELECT
+            c.*,
+            c.education_level AS edu_level,
+            m.name AS major_name,
+            col.name AS college_name
+        FROM biz_class c
+        LEFT JOIN sys_major m ON c.major_id = m.id
+        LEFT JOIN sys_college col ON m.college_id = col.id
+        WHERE c.id = #{id} AND c.del_flag = '0'
+    """)
+    SysClassVO selectClassVoById(@Param("id") Long id);
+    
+    /**
+     * [分页查询] 保持不变
      */
     @Select("""
         <script>
         SELECT
             c.*,
-            -- ✨ 这里改了：优先用班级表自己的 education_level
             c.education_level AS edu_level,
             m.name AS major_name,
             col.name AS college_name
@@ -32,11 +43,9 @@ public interface SysClassMapper extends BaseMapper<SysClass> {
         LEFT JOIN sys_major m ON c.major_id = m.id
         LEFT JOIN sys_college col ON m.college_id = col.id
         WHERE c.del_flag = '0'
-        
         <if test="ew != null and !ew.emptyOfWhere">
             AND ${ew.sqlSegment}
         </if>
-        
         ORDER BY c.grade DESC, c.class_name ASC
         </script>
     """)

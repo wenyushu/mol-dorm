@@ -74,27 +74,23 @@ public class LoginHelper {
     }
     
     /**
-     * 获取当前用户类型 (防刁民加强版)
+     * 获取当前用户类型/角色 Key (全能进化版)
+     * 🛡️ 核心职能：自动识别当前登录者是学生、老师、维修人员还是超级管理员。
      *
-     * @return "admin" 或 "student"
+     * @return 对应 RoleConstants 中的常量值 (如: "student", "repair_master", "super_admin")
      */
     public static String getUserType() {
         try {
             if (!isLogin()) return null;
             
-            // 1. 优先从 Session 拿 (这是最稳的，因为登录时我们手动存了)
-            SaSession session = StpUtil.getSession(false);
-            if (session != null) {
-                String type = session.getString("type");
-                if (StrUtil.isNotBlank(type)) return type;
+            // 1. 核心路径：直接从 Session 获取登录时缓存的 roleKey
+            // 这是最快且最准的，因为 roleKey 与 RoleConstants 严格对应
+            String roleKey = getRoleKey();
+            if (StrUtil.isNotBlank(roleKey)) {
+                return roleKey;
             }
             
-            // 2. 进阶：通过 Sa-Token 的 LoginDevice (设备/类型) 判定
-            // 假设你在登录时使用了 StpUtil.login(id, "admin")
-            String loginType = StpUtil.getLoginType();
-            if (StrUtil.isNotBlank(loginType)) return loginType;
-            
-            // 3. 兜底：解析 LoginId 字符串 (Type:ID)
+            // 2. 兜底路径：如果 Session 丢失，尝试从 LoginId 解析 (格式 "Type:ID")
             String loginId = StpUtil.getLoginIdAsString();
             if (loginId.contains(":")) {
                 return loginId.split(":")[0];
@@ -103,6 +99,36 @@ public class LoginHelper {
         } catch (Exception e) {
             return null;
         }
+    }
+    
+    /**
+     * 🟢 [新增] 判断当前用户是否拥有指定角色
+     * @param roleKey 传入 RoleConstants 中的常量
+     */
+    public static boolean hasRole(String roleKey) {
+        String currentType = getUserType();
+        return StrUtil.equals(roleKey, currentType);
+    }
+    
+    /**
+     * 🟢 [新增] 快捷判断：是否为学生
+     */
+    public static boolean isStudent() {
+        return hasRole(RoleConstants.STUDENT);
+    }
+    
+    /**
+     * 🟢 [新增] 快捷判断：是否为维修人员
+     */
+    public static boolean isRepairMaster() {
+        return hasRole(RoleConstants.REPAIR_MASTER);
+    }
+    
+    /**
+     * 🟢 [新增] 快捷判断：是否为宿管经理
+     */
+    public static boolean isDormManager() {
+        return hasRole(RoleConstants.DORM_MANAGER);
     }
     
     

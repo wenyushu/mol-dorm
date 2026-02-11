@@ -163,17 +163,29 @@ public class SysOrdinaryUser extends BaseEntity {
     @Schema(description = "帐号状态 (0:正常 1:停用 2:已归档)")
     private String status;
     
+    /**
+     * 逻辑删除标志 (0代表存在 2代表删除)
+     * 🛡️ [防刁民设计]：防止误删学生档案导致财务、报修数据孤儿化。
+     */
     @TableLogic
+    @Schema(description = "逻辑删除标志(0存在 2删除)")
     private String delFlag;
+    
+    /**
+     * 学历层次 (派生字段)
+     * 🛡️ [数据规范]：该字段不入 sys_ordinary_user 表，
+     * 而是通过 major_id 关联 sys_major 表的 level 字段获取。
+     * (0:专科, 1:本科, 2:硕士, 3:博士)
+     */
+    @TableField(exist = false)
+    @Schema(description = "学历层次 (从专业表派生)")
+    private Integer eduLevel;
     
     @Schema(description = "入学年份(学生)")
     private Integer enrollmentYear;
     
     @Schema(description = "入职年份(教工)")
     private Integer entryYear;
-    
-    @TableField(exist = false)
-    private String eduLevel;
     
     @Schema(description = "在校状态: 1在校 0离校(假期)")
     private Integer campusStatus;
@@ -183,4 +195,29 @@ public class SysOrdinaryUser extends BaseEntity {
     
     @Schema(description = "休学开始日期")
     private LocalDate suspensionStartDate;
+    
+    // ----------- 🟢 预选流转核心 (分流分配用) -----------
+    
+    @Schema(description = "预选参与标志 (0:不参与/随机 1:参与预选算法)")
+    private Integer preferenceFlag; // 默认 0
+    
+    @Schema(description = "预选组队 ID (用于匹配室友)")
+    private String teamCode; // 愿意填写且组队的分配同一组 ID
+    
+    // ----------- 🟢 学籍动态调整 (灭世级清算核心) -----------
+    
+    @Schema(description = "累计休学/入伍年数 (通常最长2年)")
+    private Integer suspensionYears; // 默认 0
+    
+    @Schema(description = "累计留级/延毕年数")
+    private Integer retainedYears;   // 默认 0
+    
+    /**
+     * 🛡️ [防刁民/算法哨兵]
+     * 计算逻辑：入学年份 + 专业年限 + 累计休学 + 留级 = 预计最晚离校年份
+     * 作用：用于 SmartAllocationController 中的一键清退审计
+     */
+    @TableField(exist = false)
+    @Schema(description = "预计最晚清算年份")
+    private Integer expectedGraduateYear;
 }

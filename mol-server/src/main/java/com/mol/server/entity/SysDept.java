@@ -34,7 +34,7 @@ public class SysDept extends BaseEntity {
     @Schema(description = "部门简介")
     private String intro;
     
-    @Schema(description = "父部门ID")
+    @Schema(description = "父部门 ID")
     private Long parentId;
     
     @Schema(description = "排序")

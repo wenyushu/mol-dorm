@@ -5,6 +5,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.ComponentScan;
+import org.springframework.context.annotation.EnableAspectJAutoProxy;
 import org.springframework.context.annotation.FilterType;
 import org.springframework.core.env.Environment;
 import java.net.UnknownHostException;
@@ -25,6 +26,7 @@ import java.net.UnknownHostException;
         )
 )
 @MapperScan("com.mol.**.mapper")
+@EnableAspectJAutoProxy(exposeProxy = true) // 👈 必须开启这个，AopContext 才能生效
 public class MolLauncherApplication {
     
     public static void main(String[] args) throws UnknownHostException {

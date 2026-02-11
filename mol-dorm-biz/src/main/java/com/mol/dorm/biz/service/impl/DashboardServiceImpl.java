@@ -12,6 +12,7 @@ import com.mol.dorm.biz.vo.DashboardVO;
 import com.mol.dorm.biz.vo.DormRoomVO;
 import com.mol.dorm.biz.vo.MyRoomVO;
 import com.mol.server.entity.SysNotice;
+import com.mol.common.core.entity.SysOrdinaryUser; // 🛡️ 修正：引用 mol-common 中的正确实体
 import com.mol.server.mapper.SysNoticeMapper;
 import com.mol.server.mapper.SysOrdinaryUserMapper;
 import com.mol.server.mapper.SysCampusMapper;
@@ -25,11 +26,11 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 /**
- * 宿舍驾驶舱核心业务实现类 - 全维度监控版
+ * 宿舍驾驶舱核心业务实现类 - 数字化全维度监控版
  * 🛡️ [防刁民设计]：
- * 1. 穿透审计：不信冗余字段，实时聚合财务流水与能耗账单，确保预警 100% 准确。
- * 2. 身份隔离：自动区分学生(MyRoomVO)与宿管(BuildingAlerts)的数据颗粒度。
- * 3. 动态色标：通过 #F56C6C(红) 和 #67C23A(绿) 实现“异常驱动管理”。
+ * 1. 深度穿透审计：所有预警数据均实时扫描底层财务余额与床位占用，不信任冗余计数字段。
+ * 2. 身份隔离看板：自动区分学生端聚合看板(MyRoomVO)与宿管端驾驶舱(Alerts)的数据颗粒度。
+ * 3. 动态视觉驱动：通过 isCritical 标志位实现异常任务堆栈的红色警示渲染。
  */
 @Slf4j
 @Service
@@ -50,30 +51,29 @@ public class DashboardServiceImpl implements DashboardService {
     private final UtilityBillMapper billMapper;
     
     // =================================================================================
-    // 1. 【学生侧】我的宿舍全量看板 (MyRoomVO 实现)
+    // 1. 【学生侧】我的宿舍全量看板 (MyRoomVO)
     // =================================================================================
     
     @Override
     public MyRoomVO getStudentRoomDashboard(Long userId) {
-        // A. 基础定位：找到学生当前住哪
+        // [反查审计]：通过学生 ID 穿透床位表精准定位房间
         DormRoom room = roomMapper.selectByStudentId(userId);
-        if (room == null) throw new ServiceException("看板加载失败：未检测到您的入住信息");
+        if (room == null) throw new ServiceException("看板加载失败：未检测到您的入住档案");
         
         MyRoomVO vo = new MyRoomVO();
         vo.setRoomNo(room.getRoomNo());
         vo.setApartmentType(room.getApartmentType());
         
-        // B. 财务哨兵：聚合钱包余额与欠费预警
+        // 财务预警哨兵
         DormRoomWallet wallet = walletMapper.selectOne(Wrappers.<DormRoomWallet>lambdaQuery().eq(DormRoomWallet::getRoomId, room.getId()));
         if (wallet != null) {
             vo.setWalletBalance(wallet.getBalance());
             vo.setWalletStatus(wallet.getStatus());
-            // [防刁民]：余额低于10元强制触发前端红点警告
             vo.setPowerOffWarning(wallet.getBalance().compareTo(new BigDecimal("10")) < 0);
-            vo.setWalletStatusMsg(wallet.getBalance().compareTo(BigDecimal.ZERO) < 0 ? "已欠费，请立即充值防止断电" : "正常使用");
+            vo.setWalletStatusMsg(wallet.getBalance().compareTo(BigDecimal.ZERO) < 0 ? "已欠费，请充值" : "正常");
         }
         
-        // C. 能耗快照：抓取最近一期已结账单
+        // 能耗快照：获取最近一期账单
         UtilityBill lastBill = billMapper.selectOne(Wrappers.<UtilityBill>lambdaQuery()
                 .eq(UtilityBill::getRoomId, room.getId())
                 .orderByDesc(UtilityBill::getMonth).last("LIMIT 1"));
@@ -83,7 +83,7 @@ public class DashboardServiceImpl implements DashboardService {
             vo.setLastElectricUsage(lastBill.getElectricUsage());
         }
         
-        // D. 舍友矩阵：穿透床位表获取实时舍友画像
+        // 舍友实时分布
         List<DormBed> beds = bedMapper.selectList(Wrappers.<DormBed>lambdaQuery().eq(DormBed::getRoomId, room.getId()));
         vo.setBedList(beds.stream().map(b -> {
             MyRoomVO.BedInfoVO bedVo = new MyRoomVO.BedInfoVO();
@@ -91,20 +91,18 @@ public class DashboardServiceImpl implements DashboardService {
             bedVo.setBedLabel(b.getBedLabel());
             bedVo.setIsOccupied(b.getOccupantId() != null);
             bedVo.setIsMe(userId.equals(b.getOccupantId()));
-            // 如果有人，则带出脱敏后的姓名与画像 (逻辑略)
             return bedVo;
         }).collect(Collectors.toList()));
         
-        // E. 公告聚合
+        // 紧急公告聚合
         SysNotice latest = noticeMapper.selectOne(Wrappers.<SysNotice>lambdaQuery()
                 .eq(SysNotice::getStatus, "0").orderByDesc(SysNotice::getLevel, SysNotice::getCreateTime).last("LIMIT 1"));
         if (latest != null) {
             MyRoomVO.NoticeSnippetVO nVo = new MyRoomVO.NoticeSnippetVO();
             nVo.setTitle(latest.getTitle());
-            nVo.setTypeDesc(latest.getType() == 3 ? "紧急" : "通知");
+            nVo.setTypeDesc(Objects.equals(latest.getType(), 3) ? "紧急" : "通知");
             vo.setLatestNotice(nVo);
         }
-        
         return vo;
     }
     
@@ -112,33 +110,20 @@ public class DashboardServiceImpl implements DashboardService {
     // 2. 【宿管侧】驾驶舱功能补全
     // =================================================================================
     
-    /**
-     * 🟢 [财务预警] 获取待断电提醒列表 (针对宿管)
-     * [防刁民逻辑]：自动穿透“余额 < 0”且“开关还开着”的房间，提示宿管执行物联关断。
-     */
     @Override
     public List<Map<String, Object>> getWalletArrearsAlerts(Long buildingId) {
-        // 这里的 SQL 在 Mapper XML 中实现，直接通过 Room 联表查询 Wallet 状态为 2 的记录
         return walletMapper.selectArrearsRoomsByBuilding(buildingId);
     }
     
-    /**
-     * 🟢 [能耗审计] 获取本月异常用电排行
-     * [防刁民逻辑]：辅助宿管发现“违规电器”。
-     */
     @Override
     public List<Map<String, Object>> getEnergyAnomalyRank(Long buildingId) {
-        // 获取该楼栋下本月电费异常（例如超过同型号房间平均值 150%）的列表
         return billMapper.selectAnomalyRank(buildingId);
     }
     
-    /**
-     * 获取首页聚合看板大屏数据
-     */
     @Override
     public DashboardVO getBigScreenData() {
         Long totalBeds = bedMapper.selectCount(Wrappers.<DormBed>lambdaQuery().eq(DormBed::getStatus, 20));
-        Long usedBeds = bedMapper.selectCount(Wrappers.<DormBed>lambdaQuery().eq(DormBed::getResStatus, 22));
+        Long usedBeds = bedMapper.selectCount(Wrappers.<DormBed>lambdaQuery().isNotNull(DormBed::getOccupantId));
         
         DashboardVO.SummaryCard summary = DashboardVO.SummaryCard.builder()
                 .totalBuildings(buildingMapper.selectCount(null))
@@ -150,8 +135,8 @@ public class DashboardServiceImpl implements DashboardService {
         return DashboardVO.builder()
                 .summary(summary)
                 .occupancyPie(Arrays.asList(
-                        new DashboardVO.NameValue("在宿人员", usedBeds, "#67C23A"),
-                        new DashboardVO.NameValue("空闲床位", Math.max(0, totalBeds - usedBeds), "#909399")
+                        new DashboardVO.NameValue("在宿学生", usedBeds, "#67C23A"),
+                        new DashboardVO.NameValue("空置床位", Math.max(0, totalBeds - usedBeds), "#909399")
                 ))
                 .repairPie(buildRepairPie())
                 .infoBoard(buildInfoBoard())
@@ -160,7 +145,85 @@ public class DashboardServiceImpl implements DashboardService {
     }
     
     // =================================================================================
-    // 3. 视觉与下钻辅助逻辑
+    // 3. 【核心下钻】L4 房间人员画像透视 (解决报错的关键补全)
+    // =================================================================================
+    
+    /**
+     * 🟢 房间原子详情：实现人员档案与物理床位的秒级对账
+     * [防数据滞后]：即时调用 userMapper 获取实时姓名，杜绝因档案迁移导致的姓名显示错误。
+     */
+    @Override
+    public DormRoomVO getRoomDetail(Long roomId) {
+        // A. 抓取房间物理全量详情 (由 DormRoomMapper.xml 穿透楼宇、楼层名称)
+        Map<String, Object> roomMap = roomMapper.selectRoomDetail(roomId);
+        if (roomMap == null) throw new ServiceException("下钻失败：房间档案已在系统中注销");
+        
+        DormRoomVO vo = new DormRoomVO();
+        vo.setId(roomId);
+        vo.setRoomNo((String) roomMap.get("roomNo"));
+        vo.setBuildingName((String) roomMap.get("buildingName"));
+        vo.setFloorNo((Integer) roomMap.get("floorNum"));
+        vo.setCurrentNum((Integer) roomMap.get("currentNum"));
+        vo.setCapacity((Integer) roomMap.get("capacity"));
+        vo.setStatus((Integer) roomMap.get("status"));
+        vo.setStatusDesc(DormStatusEnum.fromCode(vo.getStatus()).getDesc());
+        
+        // B. 穿透至最底层床位表进行人员反查
+        List<DormBed> beds = bedMapper.selectList(Wrappers.<DormBed>lambdaQuery()
+                .eq(DormBed::getRoomId, roomId).orderByAsc(DormBed::getBedLabel));
+        
+        vo.setBedList(beds.stream().map(b -> {
+            DormRoomVO.BedInfo detail = new DormRoomVO.BedInfo();
+            detail.setBedId(b.getId());
+            detail.setBedLabel(b.getBedLabel());
+            detail.setOccupantId(b.getOccupantId());
+            detail.setOccupantType(b.getOccupantType());
+            detail.setVersion(b.getVersion());
+            
+            // 🛡️ [修正点]：通过 getUsername() 获取学工号，消灭 getStudentNo 报错
+            if (b.getOccupantId() != null) {
+                SysOrdinaryUser user = userMapper.selectById(b.getOccupantId());
+                if (user != null) {
+                    detail.setOccupantName(user.getRealName());
+                    detail.setOccupantNo(user.getUsername()); // 👈 核心修复：username 即代表学号
+                }
+            }
+            return detail;
+        }).collect(Collectors.toList()));
+        
+        return vo;
+    }
+    
+    /**
+     * 🟢 【今日动态预警板】探测引擎
+     * [逻辑]：自动扫描积压工单、异常财务与高敏申请，驱动大屏 isCritical 红色预警。
+     */
+    @Override
+    public Map<String, Object> getTodayAlerts() {
+        Map<String, Object> alerts = new HashMap<>();
+        
+        // 1. 财务风险预判：余额小于 0 的房间总数
+        long arrearsCount = walletMapper.selectCount(Wrappers.<DormRoomWallet>lambdaQuery()
+                .lt(DormRoomWallet::getBalance, BigDecimal.ZERO));
+        alerts.put("arrearsCount", arrearsCount);
+        
+        // 2. 运维时效预判：探测 24 小时未指派的积压报修单
+        List<RepairOrder> urgentOrders = repairMapper.selectUrgentOrders();
+        alerts.put("urgentRepairs", urgentOrders.size());
+        
+        // 3. 行政堆栈预判：待审批的工作流总数
+        long pendingWorkflow = workflowMapper.selectCount(Wrappers.<DormWorkflow>lambdaQuery()
+                .eq(DormWorkflow::getStatus, 0));
+        alerts.put("pendingWorkflow", pendingWorkflow);
+        
+        // 🛡️ [高压预警驱动]：若任意堆栈超过阈值，大屏 UI 开启红色警戒模式
+        alerts.put("isCritical", arrearsCount > 5 || urgentOrders.size() > 10 || pendingWorkflow > 20);
+        
+        return alerts;
+    }
+    
+    // =================================================================================
+    // 4. 下钻结构辅助逻辑
     // =================================================================================
     
     @Override
@@ -189,7 +252,7 @@ public class DashboardServiceImpl implements DashboardService {
             long used = ((Number) m.get("used")).longValue();
             long total = ((Number) m.get("total")).longValue();
             fMap.put("floor", m.get("floor_num") + "F");
-            // 根据饱和度动态配置 UI 颜色
+            // 🛡️ [UI 驱动]：饱和度 > 90% 显红色预警
             fMap.put("color", (double)used/total >= 0.9 ? "#F56C6C" : "#409EFF");
             return fMap;
         }).collect(Collectors.toList());
@@ -217,9 +280,11 @@ public class DashboardServiceImpl implements DashboardService {
     
     private DashboardVO.WorkQueue buildWorkQueue() {
         long pendingRepairs = repairMapper.selectCount(Wrappers.<RepairOrder>lambdaQuery().eq(RepairOrder::getStatus, 0));
+        long pendingWf = workflowMapper.selectCount(Wrappers.<DormWorkflow>lambdaQuery().eq(DormWorkflow::getStatus, 0));
         return DashboardVO.WorkQueue.builder()
                 .activeRepairs(pendingRepairs)
-                .isCritical(pendingRepairs > 10)
+                .pendingWorkflow(pendingWf)
+                .isCritical(pendingRepairs > 10 || pendingWf > 20)
                 .build();
     }
     
@@ -230,7 +295,4 @@ public class DashboardServiceImpl implements DashboardService {
                 new DashboardVO.NameValue(m.get("status").toString(), m.get("total"), "#409EFF")
         ).collect(Collectors.toList());
     }
-    
-    @Override public DormRoomVO getRoomDetail(Long roomId) { return null; }
-    @Override public Map<String, Object> getTodayAlerts() { return null; }
 }
