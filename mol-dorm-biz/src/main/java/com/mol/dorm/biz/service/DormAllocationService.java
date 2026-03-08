@@ -121,7 +121,7 @@ public class DormAllocationService {
                     roomMates.add(bestMatch);
                     studentPool.remove(bestMatch);
                 } else {
-                    // 若无理想匹配，则直接按班级地缘性顺位补齐
+                    // 若无理想匹配，则直接按班级地缘性进行顺位补齐
                     roomMates.add(studentPool.removeFirst());
                 }
             }

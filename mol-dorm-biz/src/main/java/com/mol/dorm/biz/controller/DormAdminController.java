@@ -96,7 +96,7 @@ public class DormAdminController {
         return R.okMsg(msg);
     }
     
-    @Operation(summary = "[创世级] 批量毕业生离校")
+    @Operation(summary = "[灭世级] 批量毕业生离校")
     @PostMapping("/manual/graduate")
     // 🛡️ [终极权限]：必须锁在 SUPER_ADMIN，防止误操作导致全校原地 “毕业”
     @SaCheckRole(RoleConstants.SUPER_ADMIN)

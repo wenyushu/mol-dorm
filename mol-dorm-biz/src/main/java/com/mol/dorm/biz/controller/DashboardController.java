@@ -87,7 +87,7 @@ public class DashboardController {
     }
     
     /**
-     * 🟢 【财务预警下钻】欠费房间实时清单
+     * 【财务预警下钻】欠费房间实时清单
      * 🛡️ [防刁民]：辅助宿管精准定位恶意欠费或遗忘缴费的宿舍。
      */
     @Operation(summary = "L2-楼栋欠费预警清单", description = "获取指定楼栋内所有余额为负数的房间及金额")
@@ -97,7 +97,7 @@ public class DashboardController {
     }
     
     /**
-     * 🟢 【能耗异常审计】高能耗排行
+     * 【能耗异常审计】高能耗排行
      * 🛡️ [防刁民]：自动识别出用电量偏离常数的房间（排查违规电器）。
      */
     @Operation(summary = "L2-楼栋能耗异常监控", description = "获取指定楼栋内用电量 Top 排行及环比异常数据")

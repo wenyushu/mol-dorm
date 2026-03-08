@@ -53,7 +53,7 @@ mybatis-plus:
 # ===================================================================
 sa-token:
   # 1. Token 名称 (前端 Header 传参的 key)
-  # 🟢 前端请求头必须带这个 Key，例如 -> mol-token: xxxxx-xxxx-xxxx
+  # 前端请求头必须带这个 Key，例如 -> mol-token: xxxxx-xxxx-xxxx
   token-name: mol-token
 
   # 2. Token 有效期 (默认 2小时)
@@ -76,7 +76,7 @@ sa-token:
   is-log: false                   # 生产环境建议关闭
   is-print: false                 # 关闭启动字符画
 
-  # 7. 前后端分离/无Cookie模式配置 🟢
+  # 7. 前后端分离/无Cookie模式配置
   is-read-cookie: false           # 关闭 Cookie 读取 (防止浏览器自动带 Cookie 干扰判断)
   is-read-body: false             # 关闭 Body 读取 (规范性)
   is-read-head: true              # 强制从 Header 读取 Token
@@ -95,7 +95,7 @@ mol:
     force-change-pwd: true
 
   # 文件存储路径 (Windows/Linux)
-  # 🟢 修复 Maven 测试报错的核心：让 Server 模块也能读到这个值
+  # 修复 Maven 测试报错的核心：让 Server 模块也能读到这个值
   profile: D:/mol/uploadPath
 # ===================================================================
 # Knife4j 4.x 公共 UI 增强配置
